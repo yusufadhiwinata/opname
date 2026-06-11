@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Inventaris PWA (Firebase Cloud)</title>
+    <title>Sistem Inventaris PWA (Optimized)</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0284c7">
     <style>
@@ -13,6 +13,7 @@
             padding: 16px;
             background-color: #f8fafc;
             color: #334155;
+            -webkit-font-smoothing: antialiased;
         }
         .header {
             background: linear-gradient(135deg, #0284c7, #0369a1);
@@ -39,12 +40,13 @@
             border-radius: 8px;
             box-sizing: border-box;
             font-size: 16px;
+            transition: all 0.2s ease;
             box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
         }
         .search-box:focus {
             outline: none;
             border-color: #0284c7;
-            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.2);
+            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
         }
         .btn {
             color: white;
@@ -55,7 +57,7 @@
             font-weight: 600;
             cursor: pointer;
             box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
-            transition: background-color 0.2s;
+            transition: all 0.2s ease;
         }
         .btn-copy { background-color: #10b981; }
         .btn-copy:hover { background-color: #059669; }
@@ -69,6 +71,7 @@
             border-radius: 12px;
             overflow-x: auto;
             box-shadow: 0 1px 3px rgb(0 0 0 / 0.1);
+            contain: content; /* Optimasi rendering browser */
         }
         table {
             width: 100%;
@@ -86,6 +89,7 @@
             color: #475569;
             font-weight: 600;
         }
+        tr { will-change: background-color; }
         tr:hover { background-color: #f8fafc; }
         .badge {
             background-color: #e2e8f0;
@@ -99,8 +103,9 @@
             color: #0284c7;
             text-decoration: none;
             font-weight: 500;
+            transition: color 0.2s;
         }
-        .btn-link:hover { text-decoration: underline; }
+        .btn-link:hover { text-decoration: underline; color: #0369a1; }
         .input-fisik {
             width: 70px;
             padding: 6px 10px;
@@ -108,12 +113,37 @@
             border-radius: 4px;
             text-align: center;
             font-size: 14px;
+            transition: border-color 0.2s;
         }
         .input-fisik:focus { outline: none; border-color: #0284c7; }
         
         .diff-zero { color: #94a3b8; font-weight: bold; }
         .diff-minus { color: #ef4444; font-weight: bold; }
         .diff-plus { color: #10b981; font-weight: bold; }
+
+        /* Style Navigasi Halaman (Pagination) */
+        .pagination-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 16px;
+            padding: 8px 4px;
+        }
+        .page-info { font-size: 14px; color: #64748b; font-weight: 500; }
+        .page-buttons { display: flex; gap: 8px; }
+        .btn-page {
+            background-color: white;
+            color: #334155;
+            border: 1px solid #cbd5e1;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-page:hover:not(:disabled) { background-color: #f1f5f9; border-color: #94a3b8; }
+        .btn-page:disabled { opacity: 0.5; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -151,68 +181,86 @@
         </table>
     </div>
 
+    <div class="pagination-bar">
+        <div class="page-info" id="pageInfo">Menampilkan 0 dari 0 item</div>
+        <div class="page-buttons">
+            <button class="btn-page" id="btnPrev" disabled>◀ Sbelumnya</button>
+            <button class="btn-page" id="btnNext" disabled>Selanjutnya ▶</button>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        // =========================================================================
-        // GANTI DENGAN KONFIGURASI FIREBASE ANDA SENDIRI:
-        // =========================================================================
+        // Konfigurasi Firebase Anda (Tetap samakan dengan akun Anda)
         const firebaseConfig = {
-    apiKey: "AIzaSyBCmlVCm69mAJP0m8DoojN1uus9XMuwgEk",
-    authDomain: "opname-rinra.firebaseapp.com",
-    databaseURL: "https://opname-rinra-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "opname-rinra",
-    storageBucket: "opname-rinra.firebasestorage.app",
-    messagingSenderId: "454143552303",
-    appId: "1:454143552303:web:8cd76839e556514cf50fda",
-    measurementId: "G-YFS8GDJKWR"
-  };
-        // Inisialisasi Firebase
+            apiKey: "AIzaSyAsYourAPIKeyHere_UbahIni",
+            authDomain: "project-anda.firebaseapp.com",
+            databaseURL: "https://project-anda-default-rtdb.firebaseio.com/",
+            projectId: "project-anda",
+            storageBucket: "project-anda.appspot.com",
+            messagingSenderId: "1234567890",
+            appId: "1:1234567890:web:abcdef123456"
+        };
+
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         
         let inventoryData = [];
+        let filteredData = [];
+        
+        // Pengaturan Pagination (Batas Tampilan Per Halaman)
+        let currentPage = 1;
+        const rowsPerPage = 50; 
 
-        // 1. Ambil & Dengarkan Perubahan Data di Firebase (Real-time Listener)
+        // 1. Ambil Data Global (Hanya dijalankan sekali di awal / jika ada update struktural)
         const dbRef = ref(db, 'inventory_root');
         onValue(dbRef, (snapshot) => {
             const dataRaw = snapshot.val();
             if (dataRaw && dataRaw.items) {
                 inventoryData = dataRaw.items;
-                renderTable();
+                applySearchAndRender(); // Sinkronisasi data ke tampilan
                 if (dataRaw.lastUpdate) {
                     document.getElementById('updateDate').innerText = `Terakhir diperbarui: ${dataRaw.lastUpdate}`;
                 }
             } else {
                 inventoryData = [];
-                document.getElementById('tableBody').innerHTML = `<tr><td colspan="9" style="text-align:center; padding:30px; color:#94a3b8;">Cloud kosong. Silakan copy data tabel Excel Anda, lalu klik tombol <b>"Paste Data Baru"</b>.</td></tr>`;
+                filteredData = [];
+                document.getElementById('tableBody').innerHTML = `<tr><td colspan="9" style="text-align:center; padding:30px; color:#94a3b8;">Cloud kosong. Silakan paste data tabel Excel Anda.</td></tr>`;
                 document.getElementById('updateDate').innerText = "Terakhir diperbarui: Belum ada data di cloud";
+                updatePaginationControls();
             }
         });
 
-        // 2. Fungsi render isi tabel
-        function renderTable() {
+        // 2. Fungsi Render Pintar (Hanya memproses 50 item aktif saat itu saja)
+        function renderTablePage() {
+            const tbody = document.getElementById('tableBody');
+            if (filteredData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:20px; color:#94a3b8;">Data tidak ditemukan</td></tr>`;
+                document.getElementById('pageInfo').innerText = "Menampilkan 0 dari 0 item";
+                return;
+            }
+
+            const start = (currentPage - 1) * rowsPerPage;
+            const end = start + rowsPerPage;
+            const pageItems = filteredData.slice(start, end);
+
             let htmlContent = "";
-            inventoryData.forEach((item, index) => {
+            pageItems.forEach((item) => {
                 let diffClass = "diff-zero";
                 let diffText = "0";
                 
                 if (item.fisik !== undefined && item.fisik !== null && item.fisik !== "") {
                     const selisih = item.fisik - item.sistem;
-                    if (selisih < 0) {
-                        diffClass = "diff-minus";
-                        diffText = selisih;
-                    } else if (selisih > 0) {
-                        diffClass = "diff-plus";
-                        diffText = "+" + selisih;
-                    }
+                    if (selisih < 0) { diffClass = "diff-minus"; diffText = selisih; }
+                    else if (selisih > 0) { diffClass = "diff-plus"; diffText = "+" + selisih; }
                 }
 
                 const staticUrl = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(item.deskripsi)}`;
                 const fisikVal = (item.fisik !== undefined && item.fisik !== null) ? item.fisik : "";
 
-                htmlContent += `<tr data-index="${index}">
+                htmlContent += `<tr data-original-index="${item.originalIndex}">
                     <td>${item.partNo}</td>
                     <td>${item.deskripsi}</td>
                     <td><span class="badge">${item.group}</span></td>
@@ -224,30 +272,79 @@
                     <td><a class="btn-link" href="${staticUrl}" target="_blank">Lihat Gambar</a></td>
                 </tr>`;
             });
-            document.getElementById('tableBody').innerHTML = htmlContent;
+            
+            tbody.innerHTML = htmlContent;
+            
+            const totalShow = Math.min(end, filteredData.length);
+            document.getElementById('pageInfo').innerText = `Menampilkan ${start + 1}-${totalShow} dari ${filteredData.length} item`;
+            updatePaginationControls();
         }
 
-        // 3. Sinkronisasi Angka FISIK Langsung ke Firebase Setiap Kali Diketik
+        function updatePaginationControls() {
+            const maxPage = Math.ceil(filteredData.length / rowsPerPage) || 1;
+            document.getElementById('btnPrev').disabled = (currentPage === 1);
+            document.getElementById('btnNext').disabled = (currentPage === maxPage || filteredData.length === 0);
+        }
+
+        // 3. Logika Input Fisik Real-time (Sangat Enteng karena menggunakan Index Asli)
         document.getElementById('tableBody').addEventListener('input', function(e) {
             if (e.target.classList.contains('input-fisik')) {
                 const row = e.target.closest('tr');
-                const index = row.getAttribute('data-index');
+                const originalIndex = row.getAttribute('data-original-index');
                 const value = e.target.value;
-                
                 const fisikValue = value !== "" ? parseFloat(value) : "";
                 
-                // Tembak update langsung ke node item spesifik di Firebase tanpa me-refresh seluruh tabel
-                const itemRef = ref(db, `inventory_root/items/${index}`);
-                update(itemRef, {
-                    fisik: fisikValue
-                });
+                // Cari item di array lokal untuk menjaga keakuratan visual selisih seketika
+                const targetItem = inventoryData[originalIndex];
+                targetItem.fisik = fisikValue;
+
+                const kolomSelisih = row.querySelector('.kolom-selisih');
+                if (value === "") {
+                    kolomSelisih.innerText = "0";
+                    kolomSelisih.className = "kolom-selisih diff-zero";
+                } else {
+                    const selisih = fisikValue - targetItem.sistem;
+                    if (selisih === 0) { kolomSelisih.innerText = "0"; kolomSelisih.className = "kolom-selisih diff-zero"; }
+                    else if (selisih < 0) { kolomSelisih.innerText = selisih; kolomSelisih.className = "kolom-selisih diff-minus"; }
+                    else { kolomSelisih.innerText = "+" + selisih; kolomSelisih.className = "kolom-selisih diff-plus"; }
+                }
+
+                // Kirim perubahan langsung ke Firebase Cloud
+                update(ref(db, `inventory_root/items/${originalIndex}`), { fisik: fisikValue });
             }
         });
 
-        // Helper pembagi baris data dari clipboard
+        // 4. Penggabungan Fungsi Cari + Reset Halaman (Mencegah Lag saat mengetik teks)
+        function applySearchAndRender() {
+            const filter = document.getElementById('searchInput').value.toLowerCase();
+            
+            // Map index asli agar input fisik tidak keliru kamar saat data disaring/dipagination
+            filteredData = inventoryData
+                .map((item, index) => ({ ...item, originalIndex: index }))
+                .filter(item => {
+                    return item.partNo.toLowerCase().includes(filter) || 
+                           item.deskripsi.toLowerCase().includes(filter) || 
+                           item.group.toLowerCase().includes(filter);
+                });
+
+            currentPage = 1; // Kembalikan ke halaman 1 setiap kali mencari barang
+            renderTablePage();
+        }
+
+        // Debounce pencarian: Menunda eksekusi 150ms agar ketikan di HP terasa sangat enteng
+        let searchTimeout;
+        document.getElementById('searchInput').addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(applySearchAndRender, 150);
+        });
+
+        // Event Listener Navigasi Pagination
+        document.getElementById('btnPrev').addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderTablePage(); window.scrollTo(0,0); } });
+        document.getElementById('btnNext').addEventListener('click', () => { const maxPage = Math.ceil(filteredData.length / rowsPerPage); if (currentPage < maxPage) { currentPage++; renderTablePage(); window.scrollTo(0,0); } });
+
+        // 5. Fitur PASTE Data Baru dari Excel
         function parseCSVRow(text) {
-            let row = [""];
-            let inQuotes = false;
+            let row = [""]; let inQuotes = false;
             for (let i = 0; i < text.length; i++) {
                 let c = text[i];
                 if (c === '"') inQuotes = !inQuotes;
@@ -257,14 +354,10 @@
             return row;
         }
 
-        // 4. Fitur Ambil / PASTE Data Baru dari Excel & Upload ke Firebase
         document.getElementById('btnPaste').addEventListener('click', async function() {
             try {
                 const text = await navigator.clipboard.readText();
-                if (!text.trim()) {
-                    alert("Clipboard kosong! Salin data tabel dari Excel terlebih dahulu.");
-                    return;
-                }
+                if (!text.trim()) { alert("Clipboard kosong!"); return; }
 
                 const barisData = text.split("\n");
                 let arrayBaru = [];
@@ -272,10 +365,8 @@
                 barisData.forEach(baris => {
                     if (!baris.trim()) return;
                     const kolom = parseCSVRow(baris);
-                    
                     if (kolom.length >= 2) {
                         if (kolom[0].toLowerCase().includes("part no") || kolom[1].toLowerCase().includes("description") || kolom[1].toLowerCase().includes("deskripsi")) return;
-
                         arrayBaru.push({
                             partNo: kolom[0] ? kolom[0].trim() : "-",
                             deskripsi: kolom[1] ? kolom[1].trim() : "-",
@@ -292,28 +383,17 @@
                     const opsiTanggal = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute:'2-digit' };
                     const waktuSkrg = new Date().toLocaleDateString('id-ID', opsiTanggal) + " WITA";
                     
-                    // Timpa data di server Firebase dengan data baru
-                    set(ref(db, 'inventory_root'), {
-                        items: arrayBaru,
-                        lastUpdate: waktuSkrg
-                    }).then(() => {
-                        alert(`Berhasil mengunggah ${arrayBaru.length} data baru ke Firebase Cloud!`);
-                    });
+                    set(ref(db, 'inventory_root'), { items: arrayBaru, lastUpdate: waktuSkrg })
+                        .then(() => alert(`Berhasil mengunggah ${arrayBaru.length} data baru!`));
                 } else {
-                    alert("Format data tidak sesuai. Pastikan Anda mengkopi langsung baris dari Excel.");
+                    alert("Format data salah.");
                 }
-            } catch (err) {
-                alert("Gagal membaca clipboard. Izinkan akses clipboard pada browser Anda.");
-            }
+            } catch (err) { alert("Akses clipboard ditolak browser."); }
         });
 
-        // 5. Fitur COPY Hasil Opname dari Layar Kembali ke Excel
+        // 6. Fitur COPY Hasil Opname Kembali ke Excel
         document.getElementById('btnCopy').addEventListener('click', function() {
-            if (inventoryData.length === 0) {
-                alert("Tidak ada data untuk disalin.");
-                return;
-            }
-            
+            if (inventoryData.length === 0) { alert("Tidak ada data."); return; }
             let tsvContent = "Part No.\tDeskripsi\tGroup Name\tItem Type\tUnit\tStok Sistem\tFisik\tSelisih\n";
             inventoryData.forEach(item => {
                 const fisikVal = (item.fisik !== undefined && item.fisik !== null && item.fisik !== "") ? item.fisik : "0";
@@ -324,34 +404,17 @@
                 }
                 tsvContent += `${item.partNo}\t${item.deskripsi}\t${item.group}\t${item.type}\t${item.unit}\t${item.sistem}\t${fisikVal}\t${selisihVal}\n`;
             });
-
             navigator.clipboard.writeText(tsvContent).then(() => {
-                const btn = document.getElementById('btnCopy');
-                btn.innerText = "✅ Hasil Opname Disalin!";
-                btn.style.backgroundColor = "#059669";
-                setTimeout(() => {
-                    btn.innerText = "📋 Salin Hasil Opname";
-                    btn.style.backgroundColor = "#10b981";
-                }, 2000);
+                const btn = document.getElementById('btnCopy'); btn.innerText = "✅ Hasil Opname Disalin!"; btn.style.backgroundColor = "#059669";
+                setTimeout(() => { btn.innerText = "📋 Salin Hasil Opname"; btn.style.backgroundColor = "#10b981"; }, 2000);
             });
         });
 
-        // 6. Hapus / Kosongkan Seluruh Data di Server Firebase
+        // 7. Tombol Kosongkan Cloud
         document.getElementById('btnReset').addEventListener('click', function() {
-            if (confirm("Apakah Anda yakin ingin menghapus seluruh data inventaris di Firebase Cloud?")) {
-                set(ref(db, 'inventory_root'), null).then(() => {
-                    alert("Seluruh data di cloud berhasil dibersihkan!");
-                });
+            if (confirm("Hapus seluruh data di Firebase Cloud?")) {
+                set(ref(db, 'inventory_root'), null);
             }
-        });
-
-        // 7. Fungsi Filter Pencarian Real-time
-        document.getElementById('searchInput').addEventListener('keyup', function() {
-            const filter = this.value.toLowerCase();
-            const rows = document.querySelectorAll('#inventoryTable tbody tr');
-            rows.forEach(row => {
-                row.style.display = row.textContent.toLowerCase().includes(filter) ? '' : 'none';
-            });
         });
     </script>
 </body>
