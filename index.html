@@ -224,7 +224,6 @@
         tableBody.addEventListener('focusin', (e) => { if (e.target.classList.contains('input-fisik') || e.target.classList.contains('input-remarks')) e.target.closest('tr').classList.add('row-active'); });
         tableBody.addEventListener('focusout', (e) => { if (e.target.classList.contains('input-fisik') || e.target.classList.contains('input-remarks')) e.target.closest('tr').classList.remove('row-active'); });
 
-        // Navigasi Keyboard antar baris input fisik
         tableBody.addEventListener('keydown', function(e) {
             if (e.target.classList.contains('input-fisik')) {
                 const currentRowIndex = parseInt(e.target.getAttribute('data-row'));
@@ -240,7 +239,6 @@
             }
         });
 
-        // Event handler untuk input fisik (Kalkulasi instan + Debounce Save)
         tableBody.addEventListener('input', function(e) {
             const row = e.target.closest('tr');
             const originalIndex = row.getAttribute('data-original-index');
@@ -267,7 +265,6 @@
                 }, 500); 
             }
             
-            // Logika untuk menyimpan input REMARKS/Keterangan
             if (e.target.classList.contains('input-remarks')) {
                 const remarksValue = e.target.value;
                 inventoryData[originalIndex].remarks = remarksValue;
@@ -297,6 +294,7 @@
             return rowText.includes('\t') ? rowText.split('\t') : rowText.split(/\s{2,}/).map(p => p.trim()).filter(p => p !== "");
         }
 
+        // LOGIKA BARU PASTE: Mengenali data mentah Excel VS data olahan hasil Salinan PWA
         document.getElementById('btnPaste').addEventListener('click', async function() {
             let text = "";
             try {
@@ -317,8 +315,24 @@
                 
                 if (kolom.length >= 2) {
                     if (kolom[0].toLowerCase().includes("part no") || kolom[1].toLowerCase().includes("desc")) return;
-                    const nilaiStokMentah = kolom[kolom.length - 1]; 
-                    const cleanStokSistem = parseFloat(nilaiStokMentah.replace(/,/g, '')) || 0;
+                    
+                    let cleanStokSistem = 0;
+                    let fisikTerisi = "";
+                    let remarksTerisi = "";
+
+                    // JIKA DATA DIPASTE ADALAH HASIL SALINAN DARI PWA (Ada 9 Kolom lengkap dengan Remarks di kolom akhir)
+                    if (kolom.length >= 8) {
+                        // Kolom ke-6 (indeks 5) adalah Stok Sistem
+                        cleanStokSistem = parseFloat(kolom[5].replace(/,/g, '')) || 0;
+                        // Kolom ke-7 (indeks 6) adalah Fisik murni jika sebelumnya sudah diisi
+                        fisikTerisi = (kolom[6] && kolom[6] !== "0") ? parseFloat(kolom[6]) : "";
+                        // Kolom ke-9 (indeks 8) adalah teks Remarks
+                        remarksTerisi = kolom[8] ? kolom[8].trim() : "";
+                    } else {
+                        // JIKA DATA ADALAH DATA MENTAH AWAL DARI EXCEL (Stok berada di kolom paling belakang)
+                        const nilaiStokMentah = kolom[kolom.length - 1]; 
+                        cleanStokSistem = parseFloat(nilaiStokMentah.replace(/,/g, '')) || 0;
+                    }
 
                     arrayBaru.push({
                         partNo: kolom[0] ? kolom[0].trim() : "-",
@@ -327,8 +341,8 @@
                         type: kolom[3] ? kolom[3].trim() : "-",
                         unit: kolom[4] ? kolom[4].trim() : "-",
                         sistem: cleanStokSistem,
-                        fisik: "",
-                        remarks: "" // Default kosong saat data baru di-paste
+                        fisik: fisikTerisi,
+                        remarks: remarksTerisi
                     });
                 }
             });
