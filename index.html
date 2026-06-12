@@ -21,7 +21,7 @@
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: var(--background); color: var(--text-main); padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .container { width: 100%; max-width: 1300px; background: var(--surface); padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .container { width: 100%; max-width: 1350px; background: var(--surface); padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
         header { margin-bottom: 24px; border-bottom: 2px solid var(--border); padding-bottom: 16px; }
         h1 { font-size: 24px; color: #0f172a; margin-bottom: 4px; }
         .update-info { font-size: 13px; color: var(--text-muted); }
@@ -48,8 +48,8 @@
         .badge { background-color: #e2e8f0; color: #334155; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
         .stok-sistem { font-weight: 600; color: #334155; text-align: center; }
         
-        .input-fisik { width: 80px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; font-weight: 600; text-align: center; outline: none; }
-        .input-remarks { width: 180px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; outline: none; }
+        .input-fisik { width: 80px; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px; font-weight: 600; text-align: center; outline: none; }
+        .input-remarks { width: 180px; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; outline: none; }
         .input-fisik:focus, .input-remarks:focus { border-color: var(--primary); background-color: #ffffff; }
 
         .kolom-selisih { font-weight: 600; text-align: center; font-size: 14px; }
@@ -140,13 +140,23 @@
         let firebaseTimeouts = {}; 
         let currentPage = 1;
         const rowsPerPage = 50; 
+        let isInitialLoad = true; // Flag pengaman agar tidak lompat halaman saat ngetik
 
         const dbRef = ref(db, 'inventory_root');
         onValue(dbRef, (snapshot) => {
             const dataRaw = snapshot.val();
             if (dataRaw && dataRaw.items) {
                 inventoryData = dataRaw.items;
-                applySearchAndRender(); 
+                
+                // Jika load pertama kali atau pencarian sedang kosong, proses filter global
+                if (isInitialLoad) {
+                    applySearchAndRender();
+                    isInitialLoad = false;
+                } else {
+                    // Update data referensi tanpa mereset posisi halaman aktif user
+                    refreshActiveDataOnly();
+                }
+
                 if (dataRaw.lastUpdate) {
                     document.getElementById('updateDate').innerText = `Terakhir diperbarui: ${dataRaw.lastUpdate}`;
                 }
@@ -161,7 +171,7 @@
             console.error(error);
         });
 
-        function renderTablePage() {
+        function renderTablePage(shouldFocusFirstRow = false) {
             const tbody = document.getElementById('tableBody');
             if (filteredData.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:20px; color:#94a3b8;">Data tidak ditemukan</td></tr>`;
@@ -208,6 +218,33 @@
             tbody.innerHTML = "";
             tbody.appendChild(fragment);
             updatePaginationControls();
+
+            // Jika dipicu perpindahan halaman otomatis, fokuskan ke baris pertama halaman baru
+            if (shouldFocusFirstRow) {
+                setTimeout(() => {
+                    const firstInput = tbody.querySelector('.input-fisik[data-row="0"]');
+                    if (firstInput) firstInput.focus();
+                }, 50);
+            }
+        }
+
+        // Memperbarui nilai data lokal tanpa merombak ulang struktur baris tabel (Mencegah Jump Back)
+        function refreshActiveDataOnly() {
+            const rows = tableBody.querySelectorAll('tr');
+            rows.forEach(row => {
+                const origIdx = row.getAttribute('data-original-index');
+                if (origIdx !== null) {
+                    const cloudItem = inventoryData[origIdx];
+                    if (cloudItem) {
+                        // Perbarui data filtered lokal
+                        const targetFiltered = filteredData.find(f => f.originalIndex == origIdx);
+                        if (targetFiltered) {
+                            targetFiltered.fisik = cloudItem.fisik;
+                            targetFiltered.remarks = cloudItem.remarks;
+                        }
+                    }
+                }
+            });
         }
 
         function updatePaginationControls() {
@@ -224,18 +261,41 @@
         tableBody.addEventListener('focusin', (e) => { if (e.target.classList.contains('input-fisik') || e.target.classList.contains('input-remarks')) e.target.closest('tr').classList.add('row-active'); });
         tableBody.addEventListener('focusout', (e) => { if (e.target.classList.contains('input-fisik') || e.target.classList.contains('input-remarks')) e.target.closest('tr').classList.remove('row-active'); });
 
-        // Navigasi Keyboard antar baris input fisik
+        // SISTEM NAVIGASI PINTAR: Pindah item otomatis, pindah halaman otomatis saat di baris akhir
         tableBody.addEventListener('keydown', function(e) {
             if (e.target.classList.contains('input-fisik')) {
                 const currentRowIndex = parseInt(e.target.getAttribute('data-row'));
+                
                 if (e.key === 'Enter' || e.key === 'ArrowDown') {
                     e.preventDefault();
                     const nextInput = tableBody.querySelector(`.input-fisik[data-row="${currentRowIndex + 1}"]`);
-                    if (nextInput) nextInput.focus();
+                    
+                    if (nextInput) {
+                        nextInput.focus();
+                    } else {
+                        // Jika baris habis, cek apakah ada halaman berikutnya
+                        const maxPage = Math.ceil(filteredData.length / rowsPerPage);
+                        if (currentPage < maxPage) {
+                            currentPage++;
+                            renderTablePage(true); // Pindah halaman & lari ke baris paling atas
+                            window.scrollTo(0, 0);
+                        } else {
+                            alert("Semua item di seluruh halaman telah selesai diperiksa!");
+                        }
+                    }
                 } else if (e.key === 'ArrowUp') {
                     e.preventDefault();
                     const prevInput = tableBody.querySelector(`.input-fisik[data-row="${currentRowIndex - 1}"]`);
-                    if (prevInput) prevInput.focus();
+                    if (prevInput) {
+                        prevInput.focus();
+                    } else if (currentPage > 1) {
+                        currentPage--;
+                        renderTablePage();
+                        setTimeout(() => {
+                            const lastInputInPrevPage = tableBody.querySelector(`.input-fisik[data-row="${rowsPerPage - 1}"]`);
+                            if (lastInputInPrevPage) lastInputInPrevPage.focus();
+                        }, 50);
+                    }
                 }
             }
         });
@@ -267,7 +327,6 @@
                 }, 500); 
             }
             
-            // Logika untuk menyimpan input REMARKS/Keterangan
             if (e.target.classList.contains('input-remarks')) {
                 const remarksValue = e.target.value;
                 inventoryData[originalIndex].remarks = remarksValue;
@@ -289,7 +348,11 @@
         }
 
         let searchTimeout;
-        document.getElementById('searchInput').addEventListener('input', () => { clearTimeout(searchTimeout); searchTimeout = setTimeout(applySearchAndRender, 150); });
+        document.getElementById('searchInput').addEventListener('input', () => { 
+            clearTimeout(searchTimeout); 
+            searchTimeout = setTimeout(applySearchAndRender, 150); 
+        });
+        
         document.getElementById('btnPrev').addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderTablePage(); window.scrollTo(0,0); } });
         document.getElementById('btnNext').addEventListener('click', () => { const maxPage = Math.ceil(filteredData.length / rowsPerPage); if (currentPage < maxPage) { currentPage++; renderTablePage(); window.scrollTo(0,0); } });
 
@@ -307,7 +370,7 @@
 
             if (!text || !text.trim()) return;
 
-            const barisData = text.split("\n");
+            const barisData = text.replace(/\r/g, "").split("\n");
             let arrayBaru = [];
 
             barisData.forEach(baris => {
@@ -317,8 +380,20 @@
                 
                 if (kolom.length >= 2) {
                     if (kolom[0].toLowerCase().includes("part no") || kolom[1].toLowerCase().includes("desc")) return;
-                    const nilaiStokMentah = kolom[kolom.length - 1]; 
-                    const cleanStokSistem = parseFloat(nilaiStokMentah.replace(/,/g, '')) || 0;
+                    
+                    let cleanStokSistem = 0;
+                    let fisikTerisi = "";
+                    let remarksTerisi = "";
+
+                    if (kolom.length >= 8) {
+                        cleanStokSistem = parseFloat(kolom[5].replace(/,/g, '')) || 0;
+                        fisikTerisi = (kolom[6] !== "" && kolom[6] !== "0") ? parseFloat(kolom[6]) : "";
+                        remarksTerisi = kolom[8] ? kolom[8].trim() : "";
+                    } else if (kolom.length === 7) {
+                        cleanStokSistem = parseFloat(kolom[6].replace(/,/g, '')) || 0;
+                    } else {
+                        cleanStokSistem = parseFloat(kolom[kolom.length - 1].replace(/,/g, '')) || 0;
+                    }
 
                     arrayBaru.push({
                         partNo: kolom[0] ? kolom[0].trim() : "-",
@@ -327,8 +402,8 @@
                         type: kolom[3] ? kolom[3].trim() : "-",
                         unit: kolom[4] ? kolom[4].trim() : "-",
                         sistem: cleanStokSistem,
-                        fisik: "",
-                        remarks: "" // Default kosong saat data baru di-paste
+                        fisik: fisikTerisi,
+                        remarks: remarksTerisi
                     });
                 }
             });
@@ -337,6 +412,7 @@
                 const opsiTanggal = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute:'2-digit' };
                 const waktuSkrg = new Date().toLocaleDateString('id-ID', opsiTanggal) + " WITA";
                 
+                isInitialLoad = true; // Reset flag load agar render halaman pertama dipicu ulang
                 set(ref(db, 'inventory_root'), { items: arrayBaru, lastUpdate: waktuSkrg })
                     .then(() => alert(`Berhasil mengunggah ${arrayBaru.length} data ke Cloud!`))
                     .catch(err => alert("Gagal mengunggah! Periksa Rules Firebase Anda."));
@@ -366,6 +442,7 @@
 
         document.getElementById('btnReset').addEventListener('click', function() {
             if (confirm("Apakah Anda yakin ingin mengosongkan cloud? Data lama akan terhapus selamanya.")) {
+                isInitialLoad = true;
                 set(ref(db, 'inventory_root'), null)
                     .then(() => alert("Cloud berhasil dikosongkan!"))
                     .catch(err => alert("Gagal menghapus cloud! Periksa Rules Firebase."));
