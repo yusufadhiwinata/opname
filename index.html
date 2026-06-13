@@ -140,7 +140,6 @@
         </div>
     </div>
 
-    <!-- Modal Form Tambah Data Manual -->
     <div class="modal" id="addModal">
         <div class="modal-content">
             <h3>Tambah Item Inventaris Baru</h3>
@@ -385,7 +384,7 @@
             return rowText.includes('\t') ? rowText.split('\t') : rowText.split(/\s{2,}/).map(p => p.trim()).filter(p => p !== "");
         }
 
-        // 4. Logika Paste Data Baru dengan Sistem Konfirmasi Timpa Keterangan (Remarks)
+        // Logika Paste Data Baru dengan Pilihan Data Fisik & Catatan Remarks
         document.getElementById('btnPaste').addEventListener('click', async function() {
             let text = "";
             try {
@@ -396,13 +395,21 @@
 
             if (!text || !text.trim()) return;
 
-            // Cek apakah ada data remarks lama di cloud
+            // 1. Cek keberadaan Data Fisik & Remarks lama di Cloud saat ini
+            const adaFisikLama = inventoryData.some(item => item.fisik !== undefined && item.fisik !== null && item.fisik !== "");
             const adaRemarksLama = inventoryData.some(item => item.remarks && item.remarks.trim() !== "");
+
+            let hapusFisikLama = false;
             let izinkanTimpaRemarks = true;
 
+            // TANYA 1: Mengenai Data Fisik lama
+            if (adaFisikLama) {
+                hapusFisikLama = confirm("Ditemukan DATA FISIK hasil opname lama di cloud.\n\nKlik 'OK' jika ingin MENGHAPUS/RESET data fisik lama.\nKlik 'Batal/Cancel' jika ingin MEMPERTAHANKAN data fisik lama Anda.");
+            }
+
+            // TANYA 2: Mengenai Catatan Remarks lama
             if (adaRemarksLama) {
-                // Pilihan penimpaan catatan kepada user
-                izinkanTimpaRemarks = confirm("Peringatan: Ditemukan catatan (Remarks) lama di cloud.\n\nKlik 'OK' jika ingin MENIMPA total semua catatan lama.\nKlik 'Batal/Cancel' jika ingin MEMPERTAHANKAN catatan lama Anda.");
+                izinkanTimpaRemarks = confirm("Ditemukan CATATAN (Remarks) lama di cloud.\n\nKlik 'OK' jika ingin MENIMPA total semua catatan lama.\nKlik 'Batal/Cancel' jika ingin MEMPERTAHANKAN catatan lama Anda.");
             }
 
             const barisData = text.replace(/\r/g, "").split("\n");
@@ -421,17 +428,27 @@
                     let fisikTerisi = "";
                     let remarksTerisi = "";
 
-                    // Cari apakah item ini punya remarks lama di database cloud saat ini
+                    // Cari referensi item lama di database cloud
                     const itemLama = inventoryData.find(i => i.partNo === targetPartNo);
-                    if (itemLama && !izinkanTimpaRemarks) {
-                        remarksTerisi = itemLama.remarks || "";
-                        fisikTerisi = itemLama.fisik !== undefined ? itemLama.fisik : "";
+                    
+                    // Kondisi default/fallback dari cloud jika user MEMPERTAHANKAN data lama
+                    if (itemLama) {
+                        if (!hapusFisikLama) {
+                            fisikTerisi = itemLama.fisik !== undefined ? itemLama.fisik : "";
+                        }
+                        if (!izinkanTimpaRemarks) {
+                            remarksTerisi = itemLama.remarks || "";
+                        }
                     }
 
                     if (kolom.length >= 8) {
                         cleanStokSistem = parseFloat(kolom[5].replace(/,/g, '')) || 0;
-                        if (izinkanTimpaRemarks) {
+                        
+                        // Jika user memilih opsi hapus fisik lama / timpa remarks, ambil kolom baru dari Excel (bila tersedia)
+                        if (hapusFisikLama) {
                             fisikTerisi = (kolom[6] !== "" && kolom[6] !== "0") ? parseFloat(kolom[6]) : "";
+                        }
+                        if (izinkanTimpaRemarks) {
                             remarksTerisi = kolom[8] ? kolom[8].trim() : "";
                         }
                     } else if (kolom.length === 7) {
@@ -459,14 +476,14 @@
                 
                 isInitialLoad = true; 
                 set(ref(db, 'inventory_root'), { items: arrayBaru, lastUpdate: waktuSkrg })
-                    .then(() => alert(`Berhasil mengunggah ${arrayBaru.length} data ke Cloud!`))
+                    .then(() => alert(`Berhasil sinkronisasi ${arrayBaru.length} data ke Cloud!`))
                     .catch(err => alert("Gagal mengunggah! Periksa Rules Firebase Anda."));
             } else {
                 alert("Data tidak dikenali. Pastikan Anda telah menyalin baris tabel dari Excel.");
             }
         });
 
-        // 5. Fungsi Logika Tombol Tambah Data Manual via Modal Form
+        // Fungsi Logika Tombol Tambah Data Manual via Modal Form
         const modal = document.getElementById("addModal");
         document.getElementById("btnOpenModal").addEventListener("click", () => { modal.style.display = "flex"; document.getElementById("formPartNo").focus(); });
         document.getElementById("btnCloseModal").addEventListener("click", () => { modal.style.display = "none"; });
@@ -484,25 +501,21 @@
                 return;
             }
 
-            // Tambahkan item baru ke dalam array lokal utama
             const itemBaru = { partNo, deskripsi, group, type, unit, sistem, fisik: "", remarks: "" };
             inventoryData.push(itemBaru);
 
             const opsiTanggal = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute:'2-digit' };
             const waktuSkrg = new Date().toLocaleDateString('id-ID', opsiTanggal) + " WITA";
 
-            // Push pembaruan array utuh ke cloud Firebase
             set(ref(db, 'inventory_root'), { items: inventoryData, lastUpdate: waktuSkrg })
                 .then(() => {
                     modal.style.display = "none";
-                    // Bersihkan isi input form modal setelah sukses disimpan
                     document.getElementById("formPartNo").value = "";
                     document.getElementById("formDeskripsi").value = "";
                     document.getElementById("formGroup").value = "";
                     document.getElementById("formUnit").value = "";
                     document.getElementById("formSistem").value = "0";
                     
-                    // Render ulang visual pencarian agar data baru masuk dalam list filter
                     applySearchAndRender();
                     alert("Item baru berhasil ditambahkan secara permanen!");
                 });
