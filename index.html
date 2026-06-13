@@ -1,518 +1,385 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Stock Opname - Rinra (Pemulihan Data)</title>
-    <style>
-        :root {
-            --primary: #2563eb;
-            --primary-hover: #1d4ed8;
-            --success: #10b981;
-            --success-hover: #059669;
-            --danger: #ef4444;
-            --danger-hover: #dc2626;
-            --background: #f8fafc;
-            --surface: #ffffff;
-            --text-main: #1e293b;
-            --text-muted: #64748b;
-            --border: #e2e8f0;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: var(--background); color: var(--text-main); padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .container { width: 100%; max-width: 1350px; background: var(--surface); padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
-        header { margin-bottom: 24px; border-bottom: 2px solid var(--border); padding-bottom: 16px; }
-        h1 { font-size: 24px; color: #0f172a; margin-bottom: 4px; }
-        .update-info { font-size: 13px; color: var(--text-muted); }
-        .toolbar { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; align-items: center; justify-content: space-between; }
-        .search-box { flex: 1; min-width: 280px; }
-        .search-box input { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; outline: none; }
-        .search-box input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 243, 0.1); }
-        .button-group { display: flex; flex-wrap: wrap; gap: 8px; }
-        button, .btn-link { padding: 10px 16px; border: none; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; text-decoration: none; }
-        button:active { transform: scale(0.98); }
-        .btn-primary { background-color: var(--primary); color: white; }
-        .btn-primary:hover { background-color: var(--primary-hover); }
-        .btn-success { background-color: var(--success); color: white; }
-        .btn-success:hover { background-color: var(--success-hover); }
-        .btn-danger { background-color: var(--danger); color: white; }
-        .btn-danger:hover { background-color: var(--danger-hover); }
-        .btn-amber { background-color: #f59e0b; color: white; }
-        .btn-amber:hover { background-color: #d97706; }
-        
-        .table-container { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
-        th { background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 12px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-        td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-        tr:hover { background-color: #f8fafc; }
-        .row-active { background-color: #eff6ff !important; }
-        .badge { background-color: #e2e8f0; color: #334155; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
-        .stok-sistem { font-weight: 600; color: #334155; text-align: center; }
-        
-        .input-fisik { width: 80px; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px; font-weight: 600; text-align: center; outline: none; }
-        .input-remarks { width: 180px; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; outline: none; }
-        .input-fisik:focus, .input-remarks:focus { border-color: var(--primary); background-color: #ffffff; }
-
-        .kolom-selisih { font-weight: 600; text-align: center; font-size: 14px; }
-        .diff-zero { color: var(--text-muted); }
-        .diff-plus { color: #059669; background-color: #ecfdf5; border-radius: 4px; padding: 2px 6px; }
-        .diff-minus { color: #dc2626; background-color: #fef2f2; border-radius: 4px; padding: 2px 6px; }
-        
-        .btn-link { padding: 4px 8px; font-size: 12px; background-color: #f1f5f9; color: var(--primary); border: 1px solid var(--border); }
-        .pagination { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
-        .page-info { font-size: 14px; color: var(--text-muted); }
-        .page-buttons { display: flex; gap: 8px; }
-        .btn-page { padding: 6px 12px; background-color: #ffffff; border: 1px solid var(--border); color: var(--text-main); }
-        .btn-page:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.4);
-            justify-content: center; align-items: center;
-            z-index: 9999;
-        }
-        .modal-content {
-            background: white; padding: 24px; border-radius: 12px;
-            width: 100%; max-width: 450px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
-        }
-        .modal-content h3 { margin-bottom: 16px; font-size: 18px; color: #0f172a; }
-        .form-group { margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px; }
-        .form-group label { font-size: 13px; font-weight: 600; color: #475569; }
-        .form-group input { padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; outline: none; }
-        .form-group input:focus { border-color: var(--primary); }
-        .modal-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
-    </style>
-</head>
-<body>
-
-    <div class="container">
-        <header>
-            <h1>Sistem Stock Opname Rinra</h1>
-            <div class="update-info" id="updateDate">Menghubungkan ke Cloud Server Firebase...</div>
-        </header>
-
-        <div class="toolbar">
-            <div class="search-box">
-                <input type="text" id="searchInput" placeholder="Cari berdasarkan Part No, Deskripsi...">
-            </div>
-            <div class="button-group">
-                <button class="btn-amber" id="btnOpenModal">➕ Tambah Data Manual</button>
-                <button class="btn-primary" id="btnPaste">📥 Paste Data Excel</button>
-                <button class="btn-success" id="btnCopy">📋 Salin Hasil Opname</button>
-                <button class="btn-danger" id="btnReset">🗑️ Kosongkan Cloud</button>
-            </div>
-        </div>
-
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Part No.</th>
-                        <th>Deskripsi Barang</th>
-                        <th>Group Name</th>
-                        <th>Item Type</th>
-                        <th>Unit</th>
-                        <th style="text-align: center;">Stok Sistem</th>
-                        <th style="text-align: center;">Fisik</th>
-                        <th style="text-align: center;">Selisih</th>
-                        <th>Remarks / Keterangan</th>
-                        <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody">
-                    <tr>
-                        <td colspan="10" style="text-align:center; padding:30px; color:#94a3b8;">Mengunduh data utuh dari cloud...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="pagination">
-            <div class="page-info" id="pageInfo">Menampilkan 0-0 dari 0 item</div>
-            <div class="page-buttons">
-                <button class="btn-page" id="btnPrev" disabled>◀ Sebelumnya</button>
-                <button class="btn-page" id="btnNext" disabled>Berikutnya ▶</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal" id="addModal">
-        <div class="modal-content">
-            <h3>Tambah Item Inventaris Baru</h3>
-            <div class="form-group"><label>Part No.</label><input type="text" id="formPartNo" placeholder="Contoh: M3050099"></div>
-            <div class="form-group"><label>Deskripsi Barang</label><input type="text" id="formDeskripsi" placeholder="Contoh: Kertas HVS A4"></div>
-            <div class="form-group"><label>Group Name</label><input type="text" id="formGroup" placeholder="Contoh: Printing & Stationary"></div>
-            <div class="form-group"><label>Item Type</label><input type="text" id="formType" value="Material"></div>
-            <div class="form-group"><label>Unit</label><input type="text" id="formUnit" placeholder="Contoh: Pcs / Pack / Rim"></div>
-            <div class="form-group"><label>Stok Sistem (On Hand)</label><input type="number" id="formSistem" value="0"></div>
-            <div class="modal-buttons">
-                <button class="btn btn-danger" style="padding:8px 14px;" id="btnCloseModal">Batal</button>
-                <button class="btn btn-success" style="padding:8px 14px;" id="btnSaveModal">Simpan</button>
-            </div>
-        </div>
-    </div>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyBCmlVCm69mAJP0m8DoojN1uus9XMuwgEk",
-            authDomain: "opname-rinra.firebaseapp.com",
-            databaseURL: "https://opname-rinra-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "opname-rinra",
-            storageBucket: "opname-rinra.firebasestorage.app",
-            messagingSenderId: "454143552303",
-            appId: "1:454143552303:web:7055d7625c9aaaebf50fda",
-            measurementId: "G-GFFZJLLWMW"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        
-        let inventoryData = [];
-        let filteredData = [];
-        let firebaseTimeouts = {}; 
-        let currentPage = 1;
-        const rowsPerPage = 50; 
-
-        // KUNCI UTAMA: Mengatur pemuatan data agar selalu tunduk 100% pada database Firebase
-        const dbRef = ref(db, 'inventory_root');
-        onValue(dbRef, (snapshot) => {
-            const dataRaw = snapshot.val();
-            if (dataRaw && dataRaw.items) {
-                inventoryData = dataRaw.items;
-                
-                // Paksa pemetaan ulang filter berdasarkan database cloud yang asli
-                const filter = document.getElementById('searchInput').value.toLowerCase();
-                filteredData = inventoryData
-                    .map((item, index) => ({ ...item, originalIndex: index }))
-                    .filter(item => item.partNo.toLowerCase().includes(filter) || item.deskripsi.toLowerCase().includes(filter) || item.group.toLowerCase().includes(filter));
-                
-                renderTablePage();
-
-                if (dataRaw.lastUpdate) {
-                    document.getElementById('updateDate').innerText = `Terakhir diperbarui: ${dataRaw.lastUpdate}`;
-                }
-            } else {
-                inventoryData = []; filteredData = [];
-                document.getElementById('tableBody').innerHTML = `<tr><td colspan="10" style="text-align:center; padding:30px; color:#94a3b8;">Cloud kosong. Silakan paste data teks inventaris Anda.</td></tr>`;
-                document.getElementById('updateDate').innerText = "Terakhir diperbarui: Belum ada data di cloud";
-                updatePaginationControls();
-            }
-        }, (error) => {
-            document.getElementById('updateDate').innerText = "Error: Cek Aturan/Rules Firebase!";
-            console.error(error);
-        });
-
-        function renderTablePage(shouldFocusFirstRow = false) {
-            const tbody = document.getElementById('tableBody');
-            if (filteredData.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:20px; color:#94a3b8;">Data tidak ditemukan</td></tr>`;
-                document.getElementById('pageInfo').innerText = "Menampilkan 0 dari 0 item";
-                return;
-            }
-
-            const start = (currentPage - 1) * rowsPerPage;
-            const end = start + rowsPerPage;
-            const pageItems = filteredData.slice(start, end);
-            const fragment = document.createDocumentFragment();
-
-            pageItems.forEach((item, index) => {
-                const tr = document.createElement('tr');
-                tr.setAttribute('data-original-index', item.originalIndex);
-                tr.setAttribute('data-page-row-index', index);
-
-                let diffClass = "diff-zero"; let diffText = "0";
-                if (item.fisik !== undefined && item.fisik !== null && item.fisik !== "") {
-                    const selisih = item.fisik - item.sistem;
-                    if (selisih < 0) { diffClass = "diff-minus"; diffText = selisih; }
-                    else if (selisih > 0) { diffClass = "diff-plus"; diffText = "+" + selisih; }
-                }
-
-                const staticUrl = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(item.deskripsi)}`;
-                const fisikVal = (item.fisik !== undefined && item.fisik !== null) ? item.fisik : "";
-                const remarksVal = item.remarks ? item.remarks : "";
-
-                tr.innerHTML = `
-                    <td>${item.partNo}</td>
-                    <td>${item.deskripsi}</td>
-                    <td><span class="badge">${item.group}</span></td>
-                    <td>${item.type}</td>
-                    <td>${item.unit}</td>
-                    <td class="stok-sistem">${item.sistem}</td>
-                    <td><input type="number" class="input-fisik" value="${fisikVal}" placeholder="0" data-row="${index}"></td>
-                    <td class="kolom-selisih ${diffClass}">${diffText}</td>
-                    <td><input type="text" class="input-remarks" value="${remarksVal}" placeholder="Tambah catatan..." data-row="${index}"></td>
-                    <td><a class="btn-link" href="${staticUrl}" target="_blank">Gambar</a></td>
-                `;
-                fragment.appendChild(tr);
-            });
-            
-            tbody.innerHTML = "";
-            tbody.appendChild(fragment);
-            updatePaginationControls();
-
-            if (shouldFocusFirstRow) {
-                setTimeout(() => {
-                    const firstInput = tbody.querySelector('.input-fisik[data-row="0"]');
-                    if (firstInput) firstInput.focus();
-                }, 50);
-            }
-        }
-
-        function updatePaginationControls() {
-            const maxPage = Math.ceil(filteredData.length / rowsPerPage) || 1;
-            const start = (currentPage - 1) * rowsPerPage;
-            const end = start + rowsPerPage;
-            const totalShow = Math.min(end, filteredData.length);
-            document.getElementById('pageInfo').innerText = `Menampilkan ${filteredData.length > 0 ? start + 1 : 0}-${totalShow} dari ${filteredData.length} item`;
-            document.getElementById('btnPrev').disabled = (currentPage === 1);
-            document.getElementById('btnNext').disabled = (currentPage === maxPage || filteredData.length === 0);
-        }
-
-        const tableBody = document.getElementById('tableBody');
-        tableBody.addEventListener('focusin', (e) => { if (e.target.classList.contains('input-fisik') || e.target.classList.contains('input-remarks')) e.target.closest('tr').classList.add('row-active'); });
-        tableBody.addEventListener('focusout', (e) => { if (e.target.classList.contains('input-fisik') || e.target.classList.contains('input-remarks')) e.target.closest('tr').classList.remove('row-active'); });
-
-        tableBody.addEventListener('keydown', function(e) {
-            if (e.target.classList.contains('input-fisik')) {
-                const currentRowIndex = parseInt(e.target.getAttribute('data-row'));
-                if (e.key === 'Enter' || e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    const nextInput = tableBody.querySelector(`.input-fisik[data-row="${currentRowIndex + 1}"]`);
-                    if (nextInput) {
-                        nextInput.focus();
-                    } else {
-                        const maxPage = Math.ceil(filteredData.length / rowsPerPage);
-                        if (currentPage < maxPage) {
-                            currentPage++;
-                            renderTablePage(true);
-                            window.scrollTo(0, 0);
-                        }
-                    }
-                } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    const prevInput = tableBody.querySelector(`.input-fisik[data-row="${currentRowIndex - 1}"]`);
-                    if (prevInput) {
-                        prevInput.focus();
-                    } else if (currentPage > 1) {
-                        currentPage--;
-                        renderTablePage();
-                        setTimeout(() => {
-                            const lastInputInPrevPage = tableBody.querySelector(`.input-fisik[data-row="${rowsPerPage - 1}"]`);
-                            if (lastInputInPrevPage) lastInputInPrevPage.focus();
-                        }, 50);
-                    }
-                }
-            }
-        });
-
-        tableBody.addEventListener('input', function(e) {
-            const row = e.target.closest('tr');
-            const originalIndex = row.getAttribute('data-original-index');
-
-            if (e.target.classList.contains('input-fisik')) {
-                const value = e.target.value;
-                const fisikValue = value !== "" ? parseFloat(value) : "";
-                inventoryData[originalIndex].fisik = fisikValue;
-                const kolomSelisih = row.querySelector('.kolom-selisih');
-                
-                if (value === "") {
-                    kolomSelisih.innerText = "0"; kolomSelisih.className = "kolom-selisih diff-zero";
-                } else {
-                    const selisih = fisikValue - inventoryData[originalIndex].sistem;
-                    if (selisih === 0) { kolomSelisih.innerText = "0"; kolomSelisih.className = "kolom-selisih diff-zero"; }
-                    else if (selisih < 0) { kolomSelisih.innerText = selisih; kolomSelisih.className = "kolom-selisih diff-minus"; }
-                    else { kolomSelisih.innerText = "+" + selisih; kolomSelisih.className = "kolom-selisih diff-plus"; }
-                }
-
-                clearTimeout(firebaseTimeouts[originalIndex + '_fisik']);
-                firebaseTimeouts[originalIndex + '_fisik'] = setTimeout(() => {
-                    update(ref(db, `inventory_root/items/${originalIndex}`), { fisik: fisikValue });
-                }, 500); 
-            }
-            
-            if (e.target.classList.contains('input-remarks')) {
-                const remarksValue = e.target.value;
-                inventoryData[originalIndex].remarks = remarksValue;
-
-                clearTimeout(firebaseTimeouts[originalIndex + '_remarks']);
-                firebaseTimeouts[originalIndex + '_remarks'] = setTimeout(() => {
-                    update(ref(db, `inventory_root/items/${originalIndex}`), { remarks: remarksValue });
-                }, 500);
-            }
-        });
-
-        function applySearchAndRender() {
-            const filter = document.getElementById('searchInput').value.toLowerCase();
-            filteredData = inventoryData
-                .map((item, index) => ({ ...item, originalIndex: index }))
-                .filter(item => item.partNo.toLowerCase().includes(filter) || item.deskripsi.toLowerCase().includes(filter) || item.group.toLowerCase().includes(filter));
-            currentPage = 1;
-            renderTablePage();
-        }
-
-        let searchTimeout;
-        document.getElementById('searchInput').addEventListener('input', () => { clearTimeout(searchTimeout); searchTimeout = setTimeout(applySearchAndRender, 150); });
-        document.getElementById('btnPrev').addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderTablePage(); window.scrollTo(0,0); } });
-        document.getElementById('btnNext').addEventListener('click', () => { const maxPage = Math.ceil(filteredData.length / rowsPerPage); if (currentPage < maxPage) { currentPage++; renderTablePage(); window.scrollTo(0,0); } });
-
-        function splitIntoColumns(rowText) {
-            return rowText.includes('\t') ? rowText.split('\t') : rowText.split(/\s{2,}/).map(p => p.trim()).filter(p => p !== "");
-        }
-
-        document.getElementById('btnPaste').addEventListener('click', async function() {
-            let text = "";
-            try {
-                text = await navigator.clipboard.readText();
-            } catch (err) {
-                text = prompt("Akses klipboard otomatis diblokir browser.\nSilakan tekan CTRL+V di kotak bawah ini lalu klik OK:");
-            }
-
-            if (!text || !text.trim()) return;
-
-            const adaDataLama = inventoryData.length > 0;
-            const adaFisikLama = inventoryData.some(item => item.fisik !== undefined && item.fisik !== null && item.fisik !== "");
-            const adaRemarksLama = inventoryData.some(item => item.remarks && item.remarks.trim() !== "");
-
-            let perbaruiStokSistem = true;
-            let hapusFisikLama = false;
-            let izinkanTimpaRemarks = true;
-
-            if (adaDataLama) {
-                perbaruiStokSistem = confirm("Ditemukan data lama di cloud.\n\nKlik 'OK' jika ingin MEMPERBARUI STOK SISTEM dengan data baru dari Excel.\nKlik 'Batal/Cancel' jika ingin MEMPERTAHANKAN angka STOK SISTEM yang sekarang.");
-                if (adaFisikLama) {
-                    hapusFisikLama = confirm("Ditemukan DATA FISIK hasil input opname lama di cloud.\n\nKlik 'OK' jika ingin MENGHAPUS/RESET data fisik lama (kembali kosong).\nKlik 'Batal/Cancel' jika ingin MEMPERTAHANKAN data fisik lama Anda.");
-                }
-                if (adaRemarksLama) {
-                    izinkanTimpaRemarks = confirm("Ditemukan CATATAN (Remarks) lama di cloud.\n\nKlik 'OK' jika ingin MENIMPA total semua catatan lama dengan data Excel baru.\nKlik 'Batal/Cancel' jika ingin MEMPERTAHANKAN semua catatan lama Anda.");
-                }
-            }
-
-            const barisData = text.replace(/\r/g, "").split("\n");
-            let dataHasilSinkronisasi = JSON.parse(JSON.stringify(inventoryData));
-
-            barisData.forEach(baris => {
-                const cleanBaris = baris.trim();
-                if (!cleanBaris) return;
-                const kolom = splitIntoColumns(cleanBaris);
-                
-                if (kolom.length >= 2) {
-                    if (kolom[0].toLowerCase().includes("part no") || kolom[1].toLowerCase().includes("desc")) return;
-                    
-                    const targetPartNo = kolom[0].trim();
-                    let cleanStokSistem = 0;
-                    
-                    if (kolom.length >= 8) {
-                        cleanStokSistem = parseFloat(kolom[5].replace(/,/g, '')) || 0;
-                    } else if (kolom.length === 7) {
-                        cleanStokSistem = parseFloat(kolom[6].replace(/,/g, '')) || 0;
-                    } else {
-                        cleanStokSistem = parseFloat(kolom[kolom.length - 1].replace(/,/g, '')) || 0;
-                    }
-
-                    const indexItemLama = dataHasilSinkronisasi.findIndex(i => i.partNo === targetPartNo);
-
-                    if (indexItemLama !== -1) {
-                        dataHasilSinkronisasi[indexItemLama].deskripsi = kolom[1] ? kolom[1].trim() : dataHasilSinkronisasi[indexItemLama].deskripsi;
-                        dataHasilSinkronisasi[indexItemLama].group = kolom[2] ? kolom[2].trim() : dataHasilSinkronisasi[indexItemLama].group;
-                        dataHasilSinkronisasi[indexItemLama].type = kolom[3] ? kolom[3].trim() : dataHasilSinkronisasi[indexItemLama].type;
-                        dataHasilSinkronisasi[indexItemLama].unit = kolom[4] ? kolom[4].trim() : dataHasilSinkronisasi[indexItemLama].unit;
-                        
-                        if (perbaruiStokSistem) dataHasilSinkronisasi[indexItemLama].sistem = cleanStokSistem;
-                        if (hapusFisikLama) dataHasilSinkronisasi[indexItemLama].fisik = (kolom.length >= 8 && kolom[6] !== "" && kolom[6] !== "0") ? parseFloat(kolom[6]) : "";
-                        if (izinkanTimpaRemarks) dataHasilSinkronisasi[indexItemLama].remarks = (kolom.length >= 9 && kolom[8]) ? kolom[8].trim() : "";
-                    } else {
-                        let fisikBaru = ""; let remarksBaru = "";
-                        if (kolom.length >= 8 && kolom[6] !== "" && kolom[6] !== "0") fisikBaru = parseFloat(kolom[6]);
-                        if (kolom.length >= 9 && kolom[8]) remarksBaru = kolom[8].trim();
-
-                        dataHasilSinkronisasi.push({
-                            partNo: targetPartNo,
-                            deskripsi: kolom[1] ? kolom[1].trim() : "-",
-                            group: kolom[2] ? kolom[2].trim() : "-",
-                            type: kolom[3] ? kolom[3].trim() : "-",
-                            unit: kolom[4] ? kolom[4].trim() : "-",
-                            sistem: cleanStokSistem,
-                            fisik: fisikBaru,
-                            remarks: remarksBaru
-                        });
-                    }
-                }
-            });
-
-            if (dataHasilSinkronisasi.length > 0) {
-                const opsiTanggal = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute:'2-digit' };
-                const waktuSkrg = new Date().toLocaleDateString('id-ID', opsiTanggal) + " WITA";
-                
-                set(ref(db, 'inventory_root'), { items: dataHasilSinkronisasi, lastUpdate: waktuSkrg })
-                    .then(() => alert(`Berhasil sinkronisasi. Total data di Cloud sekarang: ${dataHasilSinkronisasi.length} item.`))
-                    .catch(err => alert("Gagal mengunggah! Periksa Rules Firebase Anda."));
-            } else {
-                alert("Data tidak dikenali.");
-            }
-        });
-
-        // Form Tambah Data Manual
-        const modal = document.getElementById("addModal");
-        document.getElementById("btnOpenModal").addEventListener("click", () => { modal.style.display = "flex"; document.getElementById("formPartNo").focus(); });
-        document.getElementById("btnCloseModal").addEventListener("click", () => { modal.style.display = "none"; });
-
-        document.getElementById("btnSaveModal").addEventListener("click", () => {
-            const partNo = document.getElementById("formPartNo").value.trim();
-            const deskripsi = document.getElementById("formDeskripsi").value.trim();
-            const group = document.getElementById("formGroup").value.trim();
-            const type = document.getElementById("formType").value.trim();
-            const unit = document.getElementById("formUnit").value.trim();
-            const sistem = parseFloat(document.getElementById("formSistem").value) || 0;
-
-            if (!partNo || !deskripsi) { alert("Kolom Part No dan Deskripsi wajib diisi!"); return; }
-
-            const itemBaru = { partNo, deskripsi, group, type, unit, sistem, fisik: "", remarks: "" };
-            inventoryData.push(itemBaru);
-
-            const opsiTanggal = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute:'2-digit' };
-            const waktuSkrg = new Date().toLocaleDateString('id-ID', opsiTanggal) + " WITA";
-
-            set(ref(db, 'inventory_root'), { items: inventoryData, lastUpdate: waktuSkrg }).then(() => {
-                modal.style.display = "none";
-                document.getElementById("formPartNo").value = "";
-                document.getElementById("formDeskripsi").value = "";
-                document.getElementById("formGroup").value = "";
-                document.getElementById("formUnit").value = "";
-                document.getElementById("formSistem").value = "0";
-                alert("Item baru berhasil ditambahkan!");
-            });
-        });
-
-        document.getElementById('btnCopy').addEventListener('click', function() {
-            if (inventoryData.length === 0) { alert("Tidak ada data."); return; }
-            let tsvContent = "Part No.\tDeskripsi\tGroup Name\tItem Type\tUnit\tStok Sistem\tFisik\tSelisih\tRemarks\n";
-            inventoryData.forEach(item => {
-                const fisikVal = (item.fisik !== undefined && item.fisik !== null && item.fisik !== "") ? item.fisik : "0";
-                const remarksTxt = item.remarks ? item.remarks : "";
-                let selisihVal = "0";
-                if (item.fisik !== undefined && item.fisik !== null && item.fisik !== "") {
-                    const calc = item.fisik - item.sistem;
-                    selisihVal = calc > 0 ? "+" + calc : calc;
-                }
-                tsvContent += `${item.partNo}\t${item.deskripsi}\t${item.group}\t${item.type}\t${item.unit}\t${item.sistem}\t${fisikVal}\t${selisihVal}\t${remarksTxt}\n`;
-            });
-            navigator.clipboard.writeText(tsvContent).then(() => {
-                const btn = document.getElementById('btnCopy'); btn.innerText = "✅ Berhasil Disalin!";
-                setTimeout(() => { btn.innerText = "📋 Salin Hasil Opname"; }, 2000);
-            });
-        });
-
-        document.getElementById('btnReset').addEventListener('click', function() {
-            if (confirm("Apakah Anda yakin ingin mengosongkan cloud? Data lama akan terhapus selamanya.")) {
-                set(ref(db, 'inventory_root'), null).then(() => alert("Cloud berhasil dikosongkan!"));
-            }
-        });
-    </script>
-</body>
-</html>
+Part No.	Description	Group Name	Item Type	Unit	Min	On Hand	Remarks
+M3050001	Acco Fastener	Printing & Stationary	Material	DOS		2	
+M3411304	Aerosol Lavender	Guest Supplies	Material	Can		7	
+M3040003	Aluminium Foil 45 X 75 Cm	Guest Supplies	Material	ROLL		6	
+M3050008	Amenities Control Sh	Printing & Stationary	Material	RIM		2	
+M3050012	Amplop Coklat Uk. Folio	Printing & Stationary	Material	Pcs		100	1pack 100
+M3050013	Amplop Coklat Vendor	Printing & Stationary	Material	LBR		450	50lbr/pack
+M3050022	Amplop Logo Phinisi Point	Printing & Stationary	Material	PACK		10	
+M3050023	Amplop Logo Rinra	Printing & Stationary	Material	LBR		398	100/ikat
+M3050024	Amplop Putih Biasa	Printing & Stationary	Material	PACK		3	
+M3030006	Baby Oil Johnson 200Ml	Cleaning Supplies	Material	BTL		2	
+M3130009	Baju Pendek Renang Dewasa	Uniform	Material	Pcs		23	
+M3410094	Baju Renang ATG Jumbo 	Uniform	Material	Pcs		36	
+M3130008	Baju Renang Anak	Uniform	Material	Pcs		24	
+M3130010	Baju Renang Hijab	Uniform	Material	Pcs		60	
+3040303	Baju Renang Muslim 3L	Guest Supplies	Material	Pcs		27	
+3150067	Balon Cacing @ 100	Decoration	Material	Bks		8	
+M3150003	Balon Metalik	Decoration	Material	Pack		36	
+M3050035	Barbecue Voucher	Printing & Stationary	Material	LBR		3,100	100/ikat
+M3050039	Baterai Alkaline Aa	Printing & Stationary	Material	PCS		1,828	
+M3050040	Baterai Alkaline Aaa	Printing & Stationary	Material	PCS		268	
+M3050046	Baterai Energizer Aa	Printing & Stationary	Material	PCS		304	
+M3040009	Bayfresh	Guest Supplies	Material	CAN		146	12/dos
+3040020	Baygon Aerosol	Guest Supplies	Material	CAN		14	12/dos
+M3050059	Binder Clip 105	Printing & Stationary	Material	Dos		11	12/dos
+M3050063	Binder Clips 155	Printing & Stationary	Material	PCS		168	12/dos
+3410364	Bingkai Foto 	Lost & Breakage	Material	Pcs		1	
+M3040015	Body Lotion	Guest Supplies	Material	PCS		4,625	250/dos
+M3030020	Botol Sprayer	Cleaning Supplies	Material	PCS		8	
+M3040022	Box Kue Gambar Bulat	Guest Supplies	Material	PCS		660	
+M3040023	Box Kue Gambar Daun	Guest Supplies	Material	PCS		1,485	
+3040077	Box Take Away Giant Pizza Uk. 50X50cm	Guest Supplies	Material	Pcs		115	
+M3050072	Breakfast Voucher	Printing & Stationary	Material	LBR		7,500	isi 100
+M3030022	Buffer Pad Black 17	Cleaning Supplies	Material	PCS		4	isi 5
+M3030023	Buffer Pad Black 20	Cleaning Supplies	Material	PCS		19	isi 5
+M3030024	Buffer Pad Red 17	Cleaning Supplies	Material	PCS		1	isi 5
+M3030027	Buffer Pad White 20	Cleaning Supplies	Material	PCS		10	isi 5
+M3050089	Buku Ekspedisi	Printing & Stationary	Material	PCS		7	
+M3050090	Buku Folio 100 Lbr	Printing & Stationary	Material	PCS		7	
+3050287	Buku Folio Kecil (Kuarto)	Printing & Stationary	Material	PCS		2	
+M3050097	Buku Tamu	Printing & Stationary	Material	PCS		43	
+M3050098	Buku Tulis Biasa	Printing & Stationary	Material	PCS		2	
+M3050100	Cake & Pastry Order Form	Printing & Stationary	Material	BLOK		52	
+M3040046	Cake Case 8	Guest Supplies	Material	PACK		3	
+M3040047	Cake Cases 9.5	Guest Supplies	Material	PACK		5	
+M3050110	Cart Epson Erc-38	Printing & Stationary	Material	PCS		5	
+M3050122	Cartr Epson Erc 27	Printing & Stationary	Material	PCS		15	
+M3050161	Cash Receipt Sync	Printing & Stationary	Material	BLOK		60	
+M3050171	Cdr Gt Pro	Printing & Stationary	Material	PCS		115	
+M3130018	Celana Renang Dewasa	Uniform	Material	PCS		24	
+M3130017	Celana Renang XXL	Uniform	Material	Pcs		46	
+M3050175	Cet Stiker Penggaris	Printing & Stationary	Material	LBR		1,200	
+M3050188	Check List Parkir Mobil	Printing & Stationary	Material	Rim		1	
+M3050189	Check List Parkir Motor Inap	Printing & Stationary	Material	Rim		5	
+M3050191	Cheque Request	Printing & Stationary	Material	BLOK		56	
+3040097	Chipstray Pizza E Birra  Kertas Coklat 	Guest Supplies	Material	Lembar		700	
+M3060015	Clax Soft @20ltr	Laundry Supplies	Material	Ltr		20	20/jrg
+M3030035	Clean And Smooth Medicated 5 Ltr	Cleaning Supplies	Material	Pail		3	
+M3040059	Cling Wrap 45 Cm	Guest Supplies	Material	BKS		77	6/dos
+M3040060	Coaster	Guest Supplies	Material	PCS		3,500	250/pack
+M3050198	Complimentari Tag	Printing & Stationary	Material	PCS		13,300	500/ikat
+M3070248	Conant	Enginnering	Material	Pcs		10	
+M3040064	Conditioner	Guest Supplies	Material	PCS		7,125	250/dos
+M3050200	Contents Of Envelope	Printing & Stationary	Material	BLOK		45	
+M3100003	Continous Form 2Ply Per2	Paper Supplies	Material	BOX		7	
+M3040066	Cotton Bud	Guest Supplies	Material	PCS		3,000	
+M3040070	Cover Jas Tanpa Logo	Guest Supplies	Material	PCS		350	50/pack
+M3040075	Cup + Tutup 14Oz (50 Pcs)	Guest Supplies	Material	PACK		7	
+M3040082	Cup Ch-40 @25	Guest Supplies	Material	PACK		41	
+M3410315	Cup Inject Victory 14oz Logo + Tutup @25	Guest Supplies	Material	Pack		26	
+M3040088	Cup Sauce 35 @50	Guest Supplies	Material	PACK		3	
+M3040089	Cup Sauce 60Ml @50	Guest Supplies	Material	PACK		3	
+M3050216	Cutter Kenko Kecil	Printing & Stationary	Material	PCS		1	
+M3050230	Daily Inventory Beverage	Printing & Stationary	Material	Rim		5	
+M3040095	Dental Kit Rinra	Guest Supplies	Material	PCS		2,200	
+M3040098	Dimsum Paper 4	Guest Supplies	Material	Pack		1	
+M3040099	Dos Cake 30X30X14 Lontar 	Guest Supplies	Material	PAIL		780	
+M3330177	Dos Cake LONTAR 22x11	Guest Supplies	Material	Lbr		165	
+3040154	Dos Kue Putih	Guest Supplies	Material	Lbr		196	
+M3040119	Dos Pizza 31x31x4	Guest Supplies	Material	Pcs		540	
+M3050267	Dvdr Blank	Printing & Stationary	Material	PCS		27	
+M3050269	Entertainment Form	Printing & Stationary	Material	BLOK		300	acct
+M3050270	Equipment Check List	Printing & Stationary	Material	BLOK		26	
+M3050272	Exchange Receipt	Printing & Stationary	Material	BLOK		16	
+M3050277	Extra Bed Form	Printing & Stationary	Material	BLOK		30	
+M3410014	Filter Bag	Genset	Material	Pcs		10	
+M3050285	Flip Chart (50)	Printing & Stationary	Material	ROLL		1	
+3050533	Form A	Printing & Stationary	Material	BLOK		36	
+M3050312	Form Manual Sync 	Printing & Stationary	Material	BLOK		120	acct
+M3050313	Form Penambahan Paket	Printing & Stationary	Material	Blok		3	
+3050186	Form Tanda Terima Barang	Printing & Stationary	Material	Blok		17	
+M3050317	Formulir Laporan Kehilangan Karcis	Printing & Stationary	Material	Blok		35	
+M3050318	Formulir Perpanjangan Langganan Parkir	Printing & Stationary	Material	Blok		30	
+M3030065	Frame Loby Duster 80 Cm	Cleaning Supplies	Material	Pcs		1	
+M3030066	Frame Mop	Cleaning Supplies	Material	PCS		10	
+M3020005	Gas Portable	Kitchen Fuel	Material	Pcs		155	28/dos
+M3030067	Gel Kecoa	Cleaning Supplies	Material	TUBE		5	
+M3410062	Gelas Kopi 8Oz	Guest Supplies	Material	Pcs		1,100	50/pack
+M3411218	Gelas Plastik 220ml	Guest Supplies	Material	Pcs		1,150	50/pack
+M3050333	Gift Voucher 	Printing & Stationary	Material	BLOK		994	
+M3040156	Glass Cover Rinra	Guest Supplies	Material	PCS		15,600	100/bagian
+M3411201	Glossy Paper A3	Paper Supplies	Material	Pack		10	
+M3410313	Glossy Paper A4	Paper Supplies	Material	Pack		14	
+M3150037	Glow Stick	Decoration	Material	PCS		110	
+3050824	Guest Book HVS Sunachi	Printing & Stationary	Material	Blok		17	
+M3050343	Guest Check Banquet	Printing & Stationary	Material	BLOK		60	acct
+M3050344	Guest Check Bar On 3	Printing & Stationary	Material	BLOK		240	acct
+M3050351	Guest Check Infinity Pool	Printing & Stationary	Material	BLOK		130	acct
+M3050358	Guest Check Lontar	Printing & Stationary	Material	BLOK		23	acct
+M3050360	Guest Check Pizza E Bira	Printing & Stationary	Material	BLOK		20	acct
+M3050363	Guest Check Room Service	Printing & Stationary	Material	BLOK		40	acct
+M3050367	Guest Check Sunachi	Printing & Stationary	Material	BLOK		379	acct
+M3050368	Guest Check Sync Karaoke	Printing & Stationary	Material	BLOK		89	acct
+M3050372	Guest Coment	Printing & Stationary	Material	PCS		1,155	500/ikat
+3413286	Hampers Box + Tumbler Logo	Utensil	Material	Pcs		35	
+M3030078	Handuk Putih	Cleaning Supplies	Material	PCS		30	
+M3040165	Hanger Besi Besar	Guest Supplies	Material	Pcs		510	10/ikat
+M3050389	House Use/Comp Room	Printing & Stationary	Material	BLOK		27	
+3050372	Ijin Kerja Pipo	Printing & Stationary	Material	Blok		10	
+M3050395	Ijin Penyebaran Brosur 3 Ply	Printing & Stationary	Material	BLOK		20	
+M3030090	Insektrisida Tenopa 605 C 250 Ml	Cleaning Supplies	Material	Btl		3	
+M3050396	Inter Outlet Transfe	Printing & Stationary	Material	BLOK		42	
+M3050398	Isi Cutter Bsr	Printing & Stationary	Material	PCS		387	
+M3050399	Isi Cutter Kecil	Printing & Stationary	Material	PCS		519	
+M3020007	Isi Gas 12 Kg	Kitchen Fuel	Material	PCS		2	
+M3050401	Isi Hecter Kecil	Printing & Stationary	Material	PCS		101	
+M3050413	Isi Toner 26 A	Printing & Stationary	Material	Pcs		1	
+M3410068	Isi Toner 76A	Printing & Stationary	Material	Pcs		1	
+M3050428	Isolasi Kertas	Printing & Stationary	Material	PCS		95	
+M3050433	Isolasi Timbal Balik	Printing & Stationary	Material	ROLL		76	
+M3411244	Isolasi Timbal Balik ijo 	Printing & Stationary	Material	Pcs		7	
+M3050436	Jarum Pentul	Printing & Stationary	Material	PACK		21	
+M3030092	Jeseklin Sabun Cuci Piring	Cleaning Supplies	Material	Jrg		47	
+M3030097	Jontec Teranova	Cleaning Supplies	Material	Jrg		1	
+3350311	Kain Marking	Guest Supplies	Material	Pcs		2	
+M3410092	Kain Mikrofiber	Cleaning Supplies	Material	Pcs		2	
+M3030102	Kanebo	Cleaning Supplies	Material	Pcs		2	
+M3411305	Kapur Billyard	Guest Supplies	Material			144	
+M3050446	Karet Nilon	Printing & Stationary	Material	BKS		6	
+M3050449	Karton Duplex Tebal	Printing & Stationary	Material	LBR		41	
+M3050450	Kartu Absensi	Printing & Stationary	Material	DOS		3	
+M3100008	Kertas A4/Qs 75 Sidu	Paper Supplies	Material	RIM		51	5rim/dos
+M3100011	Kertas Bc Lux Kuning F4	Paper Supplies	Material	RIM		2	
+M3100014	Kertas Bc Lux Putih F4	Paper Supplies	Material	RIM		3	
+M3100019	Kertas F4 70 Gr Sidu	Paper Supplies	Material	RIM		3	
+M3100020	Kertas Fax	Paper Supplies	Material	ROLL		23	
+3050827	Kertas Linen F4 (Kertas Sertifikat)	Printing & Stationary	Material	Pack		2	
+M3040189	Kertas Pembungkus Nasi 25 X 30	Guest Supplies	Material	Pcs		4	
+M3040192	Kertas Roti Putih	Guest Supplies	Material	PACK		8	
+M3050485	Kertas Telstruk 1Ply	Printing & Stationary	Material	ROLL		20	
+M3050487	Kertas Telstruk 3 Ply	Printing & Stationary	Material	ROLL		90	
+M3050488	Key Card The Rinra	Printing & Stationary	Material	PCS		1,500	250/ikat
+M3050017	Key Holder RINRA 	Printing & Stationary	Material	Lbr		3,700	50/ikat
+M3410307	Kisspray	Laundry Supplies	Material	Pack		22	
+C3010017	Korek Cricket	Cigarettes	Cigarette	Pcs		50	
+M3050497	Kwitansi Biasa	Printing & Stationary	Material	BLOK		31	
+M3050501	Kwitansi Rinra	Printing & Stationary	Material	BLOK		26	
+M3050504	Label Undangan	Printing & Stationary	Material	PACK		14	
+M3410035	Lakban Bening Besar	Printing & Stationary	Material	Roll		2	
+M3050505	Lakban Biru	Printing & Stationary	Material	ROLL		26	
+M3050506	Lakban Coklat Besar	Printing & Stationary	Material	ROLL		12	
+M3050507	Lakban Hitam	Printing & Stationary	Material	ROLL		78	
+M3050509	Lakban Merah	Printing & Stationary	Material	ROLL		177	
+M1010082	Laundry Bag Logo Rinra 	Guest Supplies	Material	Lbr		12,100	50/pack
+M3050521	Leave Application Form	Printing & Stationary	Material	BLOK		11	
+M3070745	Lem Tikus	Enginnering	Material	Lbr		7	
+M3410093	Lem Tikus Tube	Cleaning Supplies	Material	Pcs		4	
+M3100026	Letter Head Phinisi Point	Paper Supplies	Material	RIM		4	
+M3100027	Letter Head Rinra	Paper Supplies	Material	RIM		3	
+M3150054	Light Stick 	Decoration	Material	PCS		133	
+M3150055	Lilin Angka Motif	Decoration	Material	Lusin		19	pack
+M3410151	Lilin Ulang Tahun Spiral kecil	Guest Supplies	Material	Pack		17	
+M3030121	Lime A Way 5 Ltr	Cleaning Supplies	Material	Pail		2	
+M3030124	Loby Duster Reefil	Cleaning Supplies	Material	PCS		6	
+M3050533	Lost & Found	Printing & Stationary	Material	BLOK		22	
+M3050536	Luggage Claim Tag	Printing & Stationary	Material	Lbr		9,300	100/ikat
+M1010063	Lunch Box 20x15x7 PHI	Guest Supplies	Material	Lbr		1,474	
+M3040209	Lunch Box 27 X 21.5 X 8cm	Guest Supplies	Material	Lbr		4,598	
+M3040211	Lunch Box Polos	Guest Supplies	Material	Pcs		300	
+M3050540	Maintenance Request	Printing & Stationary	Material	BLOK		28	
+3050039	Map Besar Rinra	Printing & Stationary	Material	LBR		3	
+M3050546	Map Biola Acco	Printing & Stationary	Material	Pcs		21	
+M3050550	Map Gantung Fujita	Printing & Stationary	Material	PCS		26	
+M3050553	Map Of Makassar Besar	Printing & Stationary	Material	LBR		569	
+3050065	Map Of Makassar Kecil	Printing & Stationary	Material	Lbr		159	
+M3050554	Map Plastik	Printing & Stationary	Material	PCS		90	12/pack
+M3050555	Map Plastik Acco	Printing & Stationary	Material	Pcs		10	
+M3410215	Map Plastik Berlubang @100	Printing & Stationary	Material	Pack		4	
+M3050561	Market List	Printing & Stationary	Material	BLOK		53	
+3050004	Market List Pizza E Birra	Printing & Stationary	Material	Blok		17	
+M3050562	Market List Sunachi	Printing & Stationary	Material	BLOK		7	
+M3030128	Masker @50	Cleaning Supplies	Material	Pcs		1,250	50/pack
+M3050575	Meals Kupon Casual	Printing & Stationary	Material	Blok		7,150	
+M3040221	Memo Pad Besar RINRA	Guest Supplies	Material	PCS		11,000	500/pack
+M3050601	Multipurpose Voucher	Printing & Stationary	Material	BLOK		30	
+M1010085	Muscadown 	Cleaning Supplies	Material	Btl		1	
+M3050602	Name Card Hotel	Printing & Stationary	Material	Lbr		10	
+M3060027	Nobla Powder 20 Kg	Laundry Supplies	Material	Sak		1	
+M3410201	Odner Besar 	Printing & Stationary	Material	Pcs		10	
+M3050614	Officer Check Bar On 3	Printing & Stationary	Material	BLOK		60	acct
+M3050621	Officer Check Lontar Dining	Printing & Stationary	Material	BLOK		71	acct
+M3050622	Officer Check Pizza E Birra	Printing & Stationary	Material	BLOK		20	acct
+M3050628	Officer Check Sunachi	Printing & Stationary	Material	BLOK		20	acct
+M3050629	Officer Check Sync Karaoke	Printing & Stationary	Material	BLOK		29	acct
+3050432	Officer Receip 3 Ply Fo	Printing & Stationary	Material	BLOK		1	
+3050046	Officer Receipt 3 Ply Acc	Printing & Stationary	Material	BLOK		12	
+3040139	Ongkos Kirim	Delivery Expenses	Material	Pcs		1	
+M3050658	Paper Bag Uk 29X22X23 Cm 	Printing & Stationary	Material	Lbr		3,012	120/pack
+M3050659	Paper Clip No.03 Kcl	Printing & Stationary	Material	PACK		7	
+M3050660	Paper Clips No. 1	Printing & Stationary	Material	Pack		1	
+M3050661	Paper Clips No.5 Bsr	Printing & Stationary	Material	BOX		1	
+M3040245	Paper Dolly 10.5	Guest Supplies	Material	PACK		4	
+M3040250	Paper Dolly 14 X 18.5 @ 100	Guest Supplies	Material	Pack		19	
+M3040251	Paper Dolly 14.5 @ 100	Guest Supplies	Material	Pack		7	
+M3040252	Paper Dolly 5.5 Cm 	Guest Supplies	Material	Pack		19	
+3230370	Pelampung	Kitchen Fuel	Material	Pcs		200	100/pack
+M3050667	Pelubang Kertas	Printing & Stationary	Material	PCS		1	
+3060026	Peluru Marking Laundry	Laundry Supplies	Material	Pack		1	
+M3410095	Peluru Marking Laundry	Laundry Supplies	Material	Dos		2	
+3050784	Penanganan Keluhan 3 Ply 	Printing & Stationary	Material	Blok		13	
+M3050675	Penghapus Pensil	Printing & Stationary	Material	PCS		11	
+M3040269	Pisau Kue Plastik	Guest Supplies	Material	Pcs		120	
+3290104	Pita Kawat	Decoration	Material	Pack		2	
+M3050696	Pita Plastik Polos	Printing & Stationary	Material	Roll		3	
+3411701	Plastik 2cup 	Guest Supplies	Material	Pack		4	
+M3050702	Plastik Cd	Printing & Stationary	Material	PACK		32	
+M1010072	Plastik Clip 8x12	Guest Supplies	Material	Pack		4	
+M3040278	Plastik Food L 20X30	Guest Supplies	Material	ROLL		11	
+M3040277	Plastik Food S 15X30	Guest Supplies	Material	PACK		17	
+M3040284	Plastik Klip 10 X 15	Guest Supplies	Material	Pack		7	
+M3040288	Plastik Koran	Guest Supplies	Material	PCS		700	100/pack
+M3050703	Plastik Laminating	Printing & Stationary	Material	LBR		60	
+M3040299	Plastik Perekat 17 Cm	Guest Supplies	Material	BKS		3	
+M3040300	Plastik Perekat 25 Cm	Guest Supplies	Material	Pack		3	
+M3030161	Plastik Putih 30 + Logo	Cleaning Supplies	Material	Pack		82	
+M3030163	Plastik Putih 40 X 60 @ 50	Cleaning Supplies	Material	Bks		56	
+M3410216	Plastik Putih Uk 24	Guest Supplies	Material	Pack		23	
+M3030164	Plastik Putih Uk 35 X 55	Cleaning Supplies	Material	Pack		86	
+3040113	Plastik Putih Uk. 40 + Logo	Guest Supplies	Material	Pack		12	
+M3030168	Plastik Sampah Hitam 80X100	Cleaning Supplies	Material	LBR		2,486	25/bks
+M3410059	Plastik Souvenir 7	Guest Supplies	Material	Pack		9	
+3412565	Plastik hitam uk 28 	Guest Supplies	Material	Pack		20	
+M1010081	Plastik perekat 7cm x25	Guest Supplies	Material	Pack		10	
+M3040309	Pop Corn Box Rinra	Guest Supplies	Material	PCS		2,850	
+M3030173	Porstex 1 Ltr	Cleaning Supplies	Material	BTL		11	
+M3050600	Printer Thermal 80X80	Printing & Stationary	Material	Pcs		96	
+M3050724	Promo Badge	Printing & Stationary	Material	PCS		3	
+M3040313	Pulpen Non Logo	Guest Supplies	Material	Pcs		15	
+M3040314	Pulpen Rinra P6 Black	Guest Supplies	Material	PCS		9,800	
+M3050730	Purchase Order	Printing & Stationary	Material	BLOK		16	
+M3050731	Purchase Requisition	Printing & Stationary	Material	BLOK		6	
+M3050732	Push Pin	Printing & Stationary	Material	BKS		8	
+M3410055	Ralat 250ml	Cleaning Supplies	Material	Btl		2	
+M3050740	Refil Tinta Epson Black 1 Ltr	Printing & Stationary	Material	Ltr		0.324	
+M3050741	Refil Tinta Epson Cyan 1ltr	Printing & Stationary	Material	Btl		0.82	
+M3050742	Refil Tinta Epson Magenta 1 Ltr	Printing & Stationary	Material	Ltr		0.82	
+M3050743	Refil Tinta Epson Yellow 1 Ltr	Printing & Stationary	Material	Ltr		1.54	
+M3050747	Refill Tinta Canon Colour	Printing & Stationary	Material	Ltr		0.45	
+M3050752	Registration Form	Printing & Stationary	Material	Blok		11	
+M3050753	Reimbursement Report	Printing & Stationary	Material	BLOK		120	acct
+M3050756	Reservation Form	Printing & Stationary	Material	BLOK		15	
+3340130	Ribbon Epson LX-310	Printing & Stationary	Material	Pcs		2	
+C3010021	Rokok Avolution Menthol	Cigarettes	Cigarette	Bks		50	
+C3010023	Rokok Class Mild @ 16	Cigarettes	Cigarette	BKS		90	
+C3010024	Rokok Class Mild @12	Cigarettes	Cigarette	BKS		70	
+C3010034	Rokok Esse Change Double 20	Cigarettes	Cigarette	BKS		125	
+C3010038	Rokok La Bold 20	Cigarettes	Cigarette	BKS		180	
+C3010040	Rokok La Ice Purple Boost 16	Cigarettes	Cigarette	BKS		126	
+C3010044	Rokok Marlboro Ice Burst	Cigarettes	Cigarette	Bks		30	
+C3010045	Rokok Marlboro Light	Cigarettes	Cigarette	BKS		60	
+C3010048	Rokok Marlboro Red	Cigarettes	Cigarette	BKS		50	
+C3010067	Rokok Nation Black	Cigarettes	Cigarette			40	
+C3010068	Rokok Nation Gold	Cigarettes	Cigarette			10	
+C3010050	Rokok Samp Avolution Red	Cigarettes	Cigarette	BKS		50	
+C3010052	Rokok Sampoerna Mild	Cigarettes	Cigarette	BKS		90	
+M3050769	Room Attendant Control Sheet	Printing & Stationary	Material	RIM		1	
+M3050778	Room Rate	Printing & Stationary	Material	LBR		5	
+M3060034	Rustgo Removes	Laundry Supplies	Material	PCS		1	
+M3040328	Sanitary Bag	Guest Supplies	Material	PCS		4,850	
+M3030199	Sapu Ijuk/Plastik	Cleaning Supplies	Material	PCS		2	
+M3030203	Sarung Tangan Latex @100	Cleaning Supplies	Material	Pcs		1,348	100/dos
+M3030205	Sarung Tangan Plastik @100	Cleaning Supplies	Material	PCS		1,400	100/dos
+3050377	Security Notice Pipo	Printing & Stationary	Material	Blok		2	
+M3330176	Sendok 3in1 	Guest Supplies	Material	Pack		800	100/bks
+M3411211	Sendok Buah Kantin	Guest Supplies	Material	Pack		18	
+M3411282	Serbet Kotak 	Cleaning Supplies	Material	Pcs		48	
+M3050784	Service Ticket Pest Control	Printing & Stationary	Material	RIM		8	
+M3040346	Sewing Kit	Guest Supplies	Material	PCS		7,600	
+M3040347	Shampo	Guest Supplies	Material	PCS		6,125	
+M3040351	Shaving Kit	Guest Supplies	Material	PCS		6,600	
+M3040355	Shower Cap	Guest Supplies	Material	PCS		9,900	
+M3040357	Shower Gel	Guest Supplies	Material	PCS		4,750	
+M3030217	Sikat Tangkai	Cleaning Supplies	Material	PCS		10	
+3410721	Silk & Smooth AB	Cleaning Supplies	Material	Pail		4	
+M3040362	Sisir	Guest Supplies	Material	PCS		2,850	
+M3050788	Sleep Well Sign	Printing & Stationary	Material	PCS		500	
+M3040363	Slipper PHI	Guest Supplies	Material	PCS		5,666	
+3050147	Snowman Spidol Wb Black	Printing & Stationary	Material	PCS		40	12/dos
+M3040368	Soap	Guest Supplies	Material	PCS		6,900	
+3412174	Spidol Permanent hitam @12	Printing & Stationary	Material	Pcs		8	
+M3050797	Spoilage Report	Printing & Stationary	Material	BLOK		19	
+M3030229	Spon Dobel	Cleaning Supplies	Material	PCS		63	
+M3020016	Spritus	Kitchen Fuel	Material	PCS		5	
+M3050799	Stabillo Boss	Printing & Stationary	Material	PCS		44	12/dos
+M3050805	Staples Kecil Hd 10	Printing & Stationary	Material	PCS		6	
+M3110014	Steel Wool	Cleaning Supplies	Material	PCS		13	
+M3050809	Stempel Tanggal	Printing & Stationary	Material	PCS		2	
+M3040378	Stereoform Mkn Tf2	Guest Supplies	Material	PCS		1,300	100/bks
+M3040379	Stereoform Mkn Tf3	Guest Supplies	Material	Pcs		1,130	100/bks
+M3020018	Sterno/Thermal	Kitchen Fuel	Material	PCS		400	100/dos
+M3150072	Stick Balon + Cup	Decoration	Material	PCS		3	
+M3410096	Stick Coklat 	General Pastry	Food	Pack		8	
+M3030237	Stick Mop	Cleaning Supplies	Material	Pcs		5	
+M3050811	Stick Note Bsr	Printing & Stationary	Material	BLOK		7	
+M3050825	Sticker Photo Paper Glossy A4	Printing & Stationary	Material	Pack		9	
+M3050843	Store Room Request	Printing & Stationary	Material	BLOK		23	
+M3040385	Straw Black Bungkus	Guest Supplies	Material	PACK		3	
+3040285	Straw Coklat Bubble	Guest Supplies	Material	Pack		4	
+M3030239	Suma Break Up	Cleaning Supplies	Material	PAIL		3	
+M3030240	Suma Calc D5	Cleaning Supplies	Material	PAIL		1	
+M3030241	Suma Crystal	Cleaning Supplies	Material	Pail		1	
+3030189	Suma Nova L6	Cleaning Supplies	Material	Jrg		3	
+M3030250	Sumbu Pel Biru	Cleaning Supplies	Material	Pcs		7	
+3040141	Sumbu Segi Lima	Kitchen Fuel	Material	Pack		1	
+M3040392	Sumbu Segi Lima	Guest Supplies	Material	Pack		9	
+M3050852	Summary Off Check	Printing & Stationary	Material	BLOK		6	
+M3050853	Summary Off Sales	Printing & Stationary	Material	RIM		2	
+M3040393	Sumpit Bambu	Guest Supplies	Material	PACK		104	
+M3050857	Surat Perintah Kerja (Spk)	Printing & Stationary	Material	BLOK		10	
+M3410121	Sushi Bulat 2106	Guest Supplies	Material	Pcs		19	
+M3410122	Sushi Bulat 2108	Guest Supplies	Material	Pcs		40	
+M3410123	Sushi Bulat 2109	Guest Supplies	Material	Pcs		9	
+M3410188	Tag Gun Laundry 	Laundry Supplies	Material	Pcs		2	
+3410950	Take Away Pizza Box & Underliner Logo 	Guest Supplies	Material	Pcs		400	100/pack
+M3050863	Tali Rafia	Printing & Stationary	Material	PCS		1	
+M3050864	Tanda Terima Faktur	Printing & Stationary	Material	BLOK		60	
+3050141	Tape Dispenser	Printing & Stationary	Material	PCS		1	
+M3040400	Tas Wine	Guest Supplies	Material	Pcs		461	
+M3030259	Taski R3	Cleaning Supplies	Material	PCS		2	
+M3030263	Taski R5   5 Ltr	Cleaning Supplies	Material	Jrg		4	
+M3050866	Tatakan Kue 25X25	Printing & Stationary	Material	Pcs		103	
+M3050867	Tatakan Kue 30X30	Printing & Stationary	Material	Pcs		47	
+M3050868	Tatakan Kue 35X35	Printing & Stationary	Material	Pcs		29	
+M3050869	Tatakan Kue 40X40	Printing & Stationary	Material	Pcs		12	
+M3330190	Tatakan RX 125 @100	Guest Supplies	Material	Pack		10	
+M3040418	Thinwall 1000 Ml Square 	Guest Supplies	Material	Pcs		200	25/bks
+M3410191	Thinwall 300ml + Tutup @25	Enginnering	Material	Pcs		75	25/bks
+M3040420	Thinwall 400Ml @25	Guest Supplies	Material	PACK		3	
+3414544	Tiket Parkir Manual 	Printing & Stationary	Material	Blok		100	acct
+M3410320	Tiket Parkir Manual	Printing & Stationary	Material	Blok		100	acct
+M3050925	Tip Ex Kenko	Printing & Stationary	Material	PCS		5	
+M1010069	Tissue Evo Towel HRT 	Cleaning Supplies	Material	Roll		33	12roll/dos
+M3330173	Tissue Livi Dinner Napkin @48	Guest Supplies	Material	Pack		291	48pack/dos
+M3330174	Tissue Livi Facial @24	Guest Supplies	Material	Pack		28	24pack/dos
+M1010071	Tissue Livi Multifold 	Guest Supplies	Material	Pack		383	24pack/dos
+M3330172	Tissue Livi Roll Bathroom @100	Guest Supplies	Material	Roll		3,497	100roll/dos
+M3030277	Tissue Serbet  White Luncheon 	Cleaning Supplies	Material	PCS		65	60pcs/dos
+M3050933	Toner Fotocopy Btl	Printing & Stationary	Material	PCS		1	
+M3050939	Toner Hp Laser Jet 276 A	Printing & Stationary	Material	Pcs		2	
+3050453	Topi Koki Pendek	Uniform	Material	PACK		2	
+1010654	Topi Koki Pendek tipis	Uniform	Material	Pack		1	
+M3050954	Transportation Request Form	Printing & Stationary	Material	BLOK		11	
+M3410306	Try Bento mika besar	Guest Supplies	Material	Pcs		900	300/dos
+1010694	Tumbler Sakura Putih logo RINRA 	Utensil	Material	Pcs		30	
+M3411245	Tusuk Gigi Home Made	Guest Supplies	Material	Pack		31	
+M3040455	Tusuk Sate Besar	Guest Supplies	Material	PCS		15	pack
+M3071410	Tutup Galon	Enginnering	Material	Pcs		2,000	
+M3040456	Tutup Gelas Kopi	Guest Supplies	Material	Pack		16	
+3190021	Underliner Cake Bulat	Guest Supplies	Material	Pcs		350	
+3190022	Underliner Cake Persegi	Guest Supplies	Material	Pcs		129	
+M3330175	Vacum Bag For Aero 15' @10	Cleaning Supplies	Material	Lbr		9	
+3050501	Voucher Hi Tea	Printing & Stationary	Material	LBR		149	
+3050497	Voucher Ice Cream	Printing & Stationary	Material	LBR		9,000	
+M3050994	Waiter Order Pad Suki	Printing & Stationary	Material	BLOK		135	acct
+M3051001	Waiters Ord P Lontar	Printing & Stationary	Material	BLOK		40	acct
+M3051006	Waiters Ord Pad Infinity Pool	Printing & Stationary	Material	BLOK		167	acct
+M3051008	Waiters Ord Pad Pizza E Birra	Printing & Stationary	Material	BLOK		15	acct
+M3051010	Waiters Ord Pad Sunachi	Printing & Stationary	Material	BLOK		499	acct
+M3051011	Waiters Order P Sync Karaoke	Printing & Stationary	Material	BLOK		80	acct
+M3030295	Window Squeege 35Cm	Cleaning Supplies	Material	PCS		1	
+M3040459	Yuri Hand Soap Grape 3.7Ltr	Guest Supplies	Material	PAIL		1	
+M3040460	Yuri Hand Soap Orange 3.7Ltr	Guest Supplies	Material	PAIL		1	
+M3040461	Yuri Hand Soap Strawberry 3.7Ltr	Guest Supplies	Material	PAIL		1	
+3350289	dos cake lontar 25x25	Guest Supplies	Material	Pcs		270	
+3350310	plastik clip 5x8	Guest Supplies	Material	Pack		13	
