@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Stock Opname - Rinra (Pemulihan Data)</title>
+    <title>Sistem Stock Opname - Rinra</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -21,7 +21,7 @@
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: var(--background); color: var(--text-main); padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .container { width: 100%; max-width: 1350px; background: var(--surface); padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .container { width: 100%; max-width: 1450px; background: var(--surface); padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
         header { margin-bottom: 24px; border-bottom: 2px solid var(--border); padding-bottom: 16px; }
         h1 { font-size: 24px; color: #0f172a; margin-bottom: 4px; }
         .update-info { font-size: 13px; color: var(--text-muted); }
@@ -59,6 +59,24 @@
         .diff-plus { color: #059669; background-color: #ecfdf5; border-radius: 4px; padding: 2px 6px; }
         .diff-minus { color: #dc2626; background-color: #fef2f2; border-radius: 4px; padding: 2px 6px; }
         
+        .btn-shortcut {
+            background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;
+            padding: 4px 10px; font-size: 11px; font-weight: 700; border-radius: 6px; cursor: pointer; text-transform: uppercase;
+        }
+        .btn-shortcut:hover { background-color: #0284c7; color: white; border-color: #0284c7; }
+
+        .img-preview {
+            width: 45px; height: 45px; border-radius: 6px; object-fit: cover;
+            border: 1px solid var(--border); cursor: pointer; transition: transform 0.2s;
+        }
+        .img-preview:hover { transform: scale(1.1); }
+        
+        .upload-label {
+            padding: 5px 10px; background-color: #f1f5f9; border: 1px solid var(--border);
+            border-radius: 6px; font-size: 12px; cursor: pointer; color: var(--text-main); font-weight: 500;
+        }
+        .upload-label:hover { background-color: #e2e8f0; }
+
         .btn-link { padding: 4px 8px; font-size: 12px; background-color: #f1f5f9; color: var(--primary); border: 1px solid var(--border); }
         .pagination { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
         .page-info { font-size: 14px; color: var(--text-muted); }
@@ -66,74 +84,18 @@
         .btn-page { padding: 6px 12px; background-color: #ffffff; border: 1px solid var(--border); color: var(--text-main); }
         .btn-page:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* Modal standar */
         .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.4);
-            justify-content: center; align-items: center;
-            z-index: 9999;
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.4); justify-content: center; align-items: center; z-index: 9999;
         }
         .modal-content {
-            background: white; padding: 24px; border-radius: 12px;
-            width: 100%; max-width: 450px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+            background: white; padding: 24px; border-radius: 12px; width: 100%; max-width: 450px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
         }
         .modal-content h3 { margin-bottom: 16px; font-size: 18px; color: #0f172a; }
         .form-group { margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px; }
         .form-group label { font-size: 13px; font-weight: 600; color: #475569; }
         .form-group input { padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; outline: none; }
-        .form-group input:focus { border-color: var(--primary); }
         .modal-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
-
-        /* Modal konfirmasi remarks */
-        #remarksConfirmModal .modal-content {
-            max-width: 520px;
-        }
-        .remarks-warning {
-            background: #fffbeb;
-            border: 1px solid #fcd34d;
-            border-radius: 8px;
-            padding: 14px 16px;
-            margin-bottom: 16px;
-            font-size: 14px;
-            color: #92400e;
-            line-height: 1.6;
-        }
-        .remarks-warning strong { display: block; margin-bottom: 6px; font-size: 15px; }
-        .remarks-stats {
-            display: flex;
-            gap: 16px;
-            margin: 12px 0;
-            font-size: 13px;
-            color: #475569;
-        }
-        .remarks-stat-item {
-            background: #f1f5f9;
-            border-radius: 6px;
-            padding: 8px 14px;
-            text-align: center;
-            flex: 1;
-        }
-        .remarks-stat-item .stat-num { font-size: 22px; font-weight: 700; color: #0f172a; display: block; }
-        .remarks-stat-item .stat-label { font-size: 12px; color: #64748b; }
-        .remarks-decision-label { font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 8px; display: block; }
-        .remarks-option {
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 12px 14px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            transition: all 0.15s;
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-        }
-        .remarks-option:hover { border-color: var(--primary); background: #eff6ff; }
-        .remarks-option.selected { border-color: var(--primary); background: #eff6ff; }
-        .remarks-option input[type="radio"] { margin-top: 2px; accent-color: var(--primary); }
-        .remarks-option-text strong { display: block; font-size: 14px; color: #0f172a; margin-bottom: 2px; }
-        .remarks-option-text span { font-size: 12px; color: #64748b; }
     </style>
 </head>
 <body>
@@ -141,12 +103,12 @@
     <div class="container">
         <header>
             <h1>Sistem Stock Opname Rinra</h1>
-            <div class="update-info" id="updateDate">Menghubungkan ke Cloud Server Firebase...</div>
+            <div class="update-info" id="updateDate">Menghubungkan ke cloud...</div>
         </header>
 
         <div class="toolbar">
             <div class="search-box">
-                <input type="text" id="searchInput" placeholder="Cari berdasarkan Part No, Deskripsi...">
+                <input type="text" id="searchInput" placeholder="Cari berdasarkan Part No, Deskripsi, atau kata kunci Shortcut...">
             </div>
             <div class="button-group">
                 <button class="btn-amber" id="btnOpenModal">➕ Tambah Data Manual</button>
@@ -161,6 +123,8 @@
                 <thead>
                     <tr>
                         <th>Part No.</th>
+                        <th>Shortcut</th>
+                        <th>Foto Item</th>
                         <th>Deskripsi Barang</th>
                         <th>Group Name</th>
                         <th>Item Type</th>
@@ -174,7 +138,7 @@
                 </thead>
                 <tbody id="tableBody">
                     <tr>
-                        <td colspan="10" style="text-align:center; padding:30px; color:#94a3b8;">Mengunduh data utuh dari cloud...</td>
+                        <td colspan="12" style="text-align:center; padding:30px; color:#94a3b8;">Menghubungkan ke server cloud...</td>
                     </tr>
                 </tbody>
             </table>
@@ -189,7 +153,6 @@
         </div>
     </div>
 
-    <!-- Modal Tambah Item -->
     <div class="modal" id="addModal">
         <div class="modal-content">
             <h3>Tambah Item Inventaris Baru</h3>
@@ -206,56 +169,10 @@
         </div>
     </div>
 
-    <!-- Modal Konfirmasi Remarks (khusus saat Paste Excel) -->
-    <div class="modal" id="remarksConfirmModal">
-        <div class="modal-content">
-            <h3>⚠️ Perlindungan Catatan (Remarks)</h3>
-            <div class="remarks-warning">
-                <strong>Data Remarks di cloud akan terpengaruh oleh operasi ini.</strong>
-                Ditemukan catatan yang sudah tersimpan. Pilih tindakan yang sesuai untuk catatan-catatan tersebut.
-            </div>
-            <div class="remarks-stats">
-                <div class="remarks-stat-item">
-                    <span class="stat-num" id="statRemarksCloud">0</span>
-                    <span class="stat-label">Catatan di Cloud</span>
-                </div>
-                <div class="remarks-stat-item">
-                    <span class="stat-num" id="statRemarksExcel">0</span>
-                    <span class="stat-label">Catatan di Excel</span>
-                </div>
-            </div>
-            <span class="remarks-decision-label">Pilih tindakan untuk Remarks:</span>
-            <label class="remarks-option selected" id="optKeep">
-                <input type="radio" name="remarksAction" value="keep" checked>
-                <div class="remarks-option-text">
-                    <strong>🔒 Pertahankan semua catatan cloud</strong>
-                    <span>Catatan yang sudah ada di cloud tidak akan diubah sama sekali. Aman untuk refresh data Excel rutin.</span>
-                </div>
-            </label>
-            <label class="remarks-option" id="optMerge">
-                <input type="radio" name="remarksAction" value="merge">
-                <div class="remarks-option-text">
-                    <strong>🔀 Gabungkan (cloud lebih prioritas)</strong>
-                    <span>Isi catatan cloud dipertahankan. Item baru yang belum ada catatannya di cloud akan mengambil dari Excel.</span>
-                </div>
-            </label>
-            <label class="remarks-option" id="optOverwrite">
-                <input type="radio" name="remarksAction" value="overwrite">
-                <div class="remarks-option-text">
-                    <strong>⚠️ Timpa dengan data Excel</strong>
-                    <span>Semua catatan cloud akan diganti dengan data dari Excel. Catatan yang belum ada di Excel akan dikosongkan.</span>
-                </div>
-            </label>
-            <div class="modal-buttons">
-                <button class="btn btn-danger" style="padding:8px 14px;" id="btnCancelRemarks">Batalkan Paste</button>
-                <button class="btn btn-primary" style="padding:8px 14px;" id="btnConfirmRemarks">Lanjutkan</button>
-            </div>
-        </div>
-    </div>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBCmlVCm69mAJP0m8DoojN1uus9XMuwgEk",
@@ -270,12 +187,14 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
+        const storage = getStorage(app);
         
         let inventoryData = [];
         let filteredData = [];
         let firebaseTimeouts = {}; 
         let currentPage = 1;
         const rowsPerPage = 50; 
+        let isInitialLoad = true; 
 
         const dbRef = ref(db, 'inventory_root');
         onValue(dbRef, (snapshot) => {
@@ -283,31 +202,38 @@
             if (dataRaw && dataRaw.items) {
                 inventoryData = dataRaw.items;
                 
-                const filter = document.getElementById('searchInput').value.toLowerCase();
-                filteredData = inventoryData
-                    .map((item, index) => ({ ...item, originalIndex: index }))
-                    .filter(item => item.partNo.toLowerCase().includes(filter) || item.deskripsi.toLowerCase().includes(filter) || item.group.toLowerCase().includes(filter));
-                
-                renderTablePage();
+                if (isInitialLoad) {
+                    applySearchAndRender();
+                    isInitialLoad = false;
+                } else {
+                    refreshActiveDataOnly();
+                }
 
                 if (dataRaw.lastUpdate) {
                     document.getElementById('updateDate').innerText = `Terakhir diperbarui: ${dataRaw.lastUpdate}`;
                 }
             } else {
                 inventoryData = []; filteredData = [];
-                document.getElementById('tableBody').innerHTML = `<tr><td colspan="10" style="text-align:center; padding:30px; color:#94a3b8;">Cloud kosong. Silakan paste data teks inventaris Anda.</td></tr>`;
+                document.getElementById('tableBody').innerHTML = `<tr><td colspan="12" style="text-align:center; padding:30px; color:#94a3b8;">Cloud kosong. Silakan paste data teks inventaris Anda.</td></tr>`;
                 document.getElementById('updateDate').innerText = "Terakhir diperbarui: Belum ada data di cloud";
                 updatePaginationControls();
             }
         }, (error) => {
-            document.getElementById('updateDate').innerText = "Error: Cek Aturan/Rules Firebase!";
+            document.getElementById('updateDate').innerText = "Error: Cek konfigurasi cloud!";
             console.error(error);
         });
+
+        function getFirstWord(text) {
+            if (!text) return "-";
+            const cleanText = text.trim();
+            const firstWord = cleanText.split(" ")[0];
+            return firstWord.replace(/[^a-zA-Z0-8]/g, "").toUpperCase();
+        }
 
         function renderTablePage(shouldFocusFirstRow = false) {
             const tbody = document.getElementById('tableBody');
             if (filteredData.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:20px; color:#94a3b8;">Data tidak ditemukan</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:20px; color:#94a3b8;">Data tidak ditemukan</td></tr>`;
                 document.getElementById('pageInfo').innerText = "Menampilkan 0 dari 0 item";
                 return;
             }
@@ -332,9 +258,23 @@
                 const staticUrl = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(item.deskripsi)}`;
                 const fisikVal = (item.fisik !== undefined && item.fisik !== null) ? item.fisik : "";
                 const remarksVal = item.remarks ? item.remarks : "";
+                const shortcutText = getFirstWord(item.deskripsi);
+
+                // Mengatur pratinjau gambar jika sudah ada di cloud storage
+                let imageColumnHtml = "";
+                if (item.imageUrl) {
+                    imageColumnHtml = `<img src="${item.imageUrl}" class="img-preview" onclick="window.open('${item.imageUrl}', '_blank')">`;
+                } else {
+                    imageColumnHtml = `
+                        <label class="upload-label" for="file_${item.originalIndex}">📁 Upload</label>
+                        <input type="file" id="file_${item.originalIndex}" class="file-input" data-index="${item.originalIndex}" accept="image/*" style="display:none;">
+                    `;
+                }
 
                 tr.innerHTML = `
                     <td>${item.partNo}</td>
+                    <td><button class="btn-shortcut" data-keyword="${shortcutText}">${shortcutText}</button></td>
+                    <td style="text-align:center;" id="img_container_${item.originalIndex}">${imageColumnHtml}</td>
                     <td>${item.deskripsi}</td>
                     <td><span class="badge">${item.group}</span></td>
                     <td>${item.type}</td>
@@ -343,7 +283,7 @@
                     <td><input type="number" class="input-fisik" value="${fisikVal}" placeholder="0" data-row="${index}"></td>
                     <td class="kolom-selisih ${diffClass}">${diffText}</td>
                     <td><input type="text" class="input-remarks" value="${remarksVal}" placeholder="Tambah catatan..." data-row="${index}"></td>
-                    <td><a class="btn-link" href="${staticUrl}" target="_blank">Gambar</a></td>
+                    <td><a class="btn-link" href="${staticUrl}" target="_blank">Google</a></td>
                 `;
                 fragment.appendChild(tr);
             });
@@ -360,6 +300,24 @@
             }
         }
 
+        function refreshActiveDataOnly() {
+            const rows = tableBody.querySelectorAll('tr');
+            rows.forEach(row => {
+                const origIdx = row.getAttribute('data-original-index');
+                if (origIdx !== null) {
+                    const cloudItem = inventoryData[origIdx];
+                    if (cloudItem) {
+                        const targetFiltered = filteredData.find(f => f.originalIndex == origIdx);
+                        if (targetFiltered) {
+                            targetFiltered.fisik = cloudItem.fisik;
+                            targetFiltered.remarks = cloudItem.remarks;
+                            targetFiltered.imageUrl = cloudItem.imageUrl;
+                        }
+                    }
+                }
+            });
+        }
+
         function updatePaginationControls() {
             const maxPage = Math.ceil(filteredData.length / rowsPerPage) || 1;
             const start = (currentPage - 1) * rowsPerPage;
@@ -370,9 +328,48 @@
             document.getElementById('btnNext').disabled = (currentPage === maxPage || filteredData.length === 0);
         }
 
-        const tableBody = document.getElementById('tableBody');
-        tableBody.addEventListener('focusin', (e) => { if (e.target.classList.contains('input-fisik') || e.target.classList.contains('input-remarks')) e.target.closest('tr').classList.add('row-active'); });
-        tableBody.addEventListener('focusout', (e) => { if (e.target.classList.contains('input-fisik') || e.target.classList.contains('input-remarks')) e.target.closest('tr').classList.remove('row-active'); });
+        // Event listener delegasi untuk shortcut pencarian & upload file gambar
+        tableBody.addEventListener('click', (e) => {
+            if (e.target.classList.contains('btn-shortcut')) {
+                const keyword = e.target.getAttribute('data-keyword');
+                document.getElementById('searchInput').value = keyword;
+                applySearchAndRender();
+            }
+        });
+
+        // Menangani unggahan gambar langsung ke Firebase Storage dari HP
+        tableBody.addEventListener('change', function(e) {
+            if (e.target.classList.contains('file-input')) {
+                const originalIndex = e.target.getAttribute('data-index');
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const container = document.getElementById(`img_container_${originalIndex}`);
+                container.innerHTML = `<span style="font-size:11px; color:var(--primary); font-weight:600;">⚡ Uploading...</span>`;
+
+                // Set tempat penyimpanan di cloud storage (Folder: item_images/Nama_Barang.jpg)
+                const fileExtension = file.name.split('.').pop();
+                const pathStorage = `item_images/${inventoryData[originalIndex].partNo}_${Date.now()}.${fileExtension}`;
+                const storageRef = sRef(storage, pathStorage);
+
+                // Unggah byte data gambar ke Google Cloud Storage
+                uploadBytes(storageRef, file).then((snapshot) => {
+                    // Ambil URL public download gambar setelah berhasil diunggah
+                    getDownloadURL(snapshot.ref).then((downloadUrl) => {
+                        inventoryData[originalIndex].imageUrl = downloadUrl;
+                        
+                        // Perbarui data database realtime agar tautan URL gambar terkunci di item
+                        update(ref(db, `inventory_root/items/${originalIndex}`), { imageUrl: downloadUrl })
+                            .then(() => {
+                                container.innerHTML = `<img src="${downloadUrl}" class="img-preview" onclick="window.open('${downloadUrl}', '_blank')">`;
+                            });
+                    });
+                }).catch(err => {
+                    alert("Gagal mengunggah gambar. Pastikan izin Firebase Storage diaktifkan!");
+                    renderTablePage();
+                });
+            }
+        });
 
         tableBody.addEventListener('keydown', function(e) {
             if (e.target.classList.contains('input-fisik')) {
@@ -432,7 +429,6 @@
                 }, 500); 
             }
             
-            // Edit remarks manual dari tabel = konfirmasi implisit dari user, langsung simpan
             if (e.target.classList.contains('input-remarks')) {
                 const remarksValue = e.target.value;
                 inventoryData[originalIndex].remarks = remarksValue;
@@ -448,7 +444,13 @@
             const filter = document.getElementById('searchInput').value.toLowerCase();
             filteredData = inventoryData
                 .map((item, index) => ({ ...item, originalIndex: index }))
-                .filter(item => item.partNo.toLowerCase().includes(filter) || item.deskripsi.toLowerCase().includes(filter) || item.group.toLowerCase().includes(filter));
+                .filter(item => {
+                    const shortcutKeyword = getFirstWord(item.deskripsi).toLowerCase();
+                    return item.partNo.toLowerCase().includes(filter) || 
+                           item.deskripsi.toLowerCase().includes(filter) || 
+                           item.group.toLowerCase().includes(filter) ||
+                           shortcutKeyword.includes(filter);
+                });
             currentPage = 1;
             renderTablePage();
         }
@@ -462,10 +464,6 @@
             return rowText.includes('\t') ? rowText.split('\t') : rowText.split(/\s{2,}/).map(p => p.trim()).filter(p => p !== "");
         }
 
-        // ─── Logika Paste Excel dengan Perlindungan Remarks ───────────────────
-        // pendingPasteData menyimpan data Excel hasil parse, menunggu keputusan user soal remarks
-        let pendingPasteData = null;
-
         document.getElementById('btnPaste').addEventListener('click', async function() {
             let text = "";
             try {
@@ -478,165 +476,89 @@
 
             const adaDataLama = inventoryData.length > 0;
             const adaFisikLama = inventoryData.some(item => item.fisik !== undefined && item.fisik !== null && item.fisik !== "");
+            const adaRemarksLama = inventoryData.some(item => item.remarks && item.remarks.trim() !== "");
 
             let perbaruiStokSistem = true;
             let hapusFisikLama = false;
+            let izinkanTimpaRemarks = true;
 
             if (adaDataLama) {
-                perbaruiStokSistem = confirm("Ditemukan data lama di cloud.\n\nKlik 'OK' jika ingin MEMPERBARUI STOK SISTEM dengan data baru dari Excel.\nKlik 'Batal/Cancel' jika ingin MEMPERTAHANKAN angka STOK SISTEM yang sekarang.");
+                perbaruiStokSistem = confirm("Ditemukan data lama di cloud.\n\nKlik 'OK' jika ingin MEMPERBARUI STOK SISTEM dengan data Excel.\nKlik 'Batal' jika ingin MEMPERTAHANKAN angka stok sistem yang sekarang.");
                 if (adaFisikLama) {
-                    hapusFisikLama = confirm("Ditemukan DATA FISIK hasil input opname lama di cloud.\n\nKlik 'OK' jika ingin MENGHAPUS/RESET data fisik lama (kembali kosong).\nKlik 'Batal/Cancel' jika ingin MEMPERTAHANKAN data fisik lama Anda.");
+                    hapusFisikLama = confirm("Ditemukan DATA FISIK lama di cloud.\n\nKlik 'OK' jika ingin MENGHAPUS/RESET data fisik lama.\nKlik 'Batal' jika ingin MEMPERTAHANKAN data fisik lama Anda.");
+                }
+                if (adaRemarksLama) {
+                    izinkanTimpaRemarks = confirm("Ditemukan CATATAN (Remarks) lama di cloud.\n\nKlik 'OK' jika ingin MENIMPA semua catatan lama.\nKlik 'Batal' jika ingin MEMPERTAHANKAN semua catatan lama Anda.");
                 }
             }
 
-            // Parse baris Excel dulu
             const barisData = text.replace(/\r/g, "").split("\n");
-            let parsedRows = []; // Array of { partNo, deskripsi, group, type, unit, sistem, fisikExcel, remarksExcel }
+            let dataHasilSinkronisasi = JSON.parse(JSON.stringify(inventoryData));
 
             barisData.forEach(baris => {
                 const cleanBaris = baris.trim();
                 if (!cleanBaris) return;
                 const kolom = splitIntoColumns(cleanBaris);
-                if (kolom.length < 2) return;
-                if (kolom[0].toLowerCase().includes("part no") || kolom[1].toLowerCase().includes("desc")) return;
-
-                const targetPartNo = kolom[0].trim();
-                let cleanStokSistem = 0;
                 
-                if (kolom.length >= 8) {
-                    cleanStokSistem = parseFloat(kolom[5].replace(/,/g, '')) || 0;
-                } else if (kolom.length === 7) {
-                    cleanStokSistem = parseFloat(kolom[6].replace(/,/g, '')) || 0;
-                } else {
-                    cleanStokSistem = parseFloat(kolom[kolom.length - 1].replace(/,/g, '')) || 0;
-                }
-
-                let fisikExcel = "";
-                let remarksExcel = "";
-                if (kolom.length >= 8 && kolom[6] !== "" && kolom[6] !== "0") fisikExcel = parseFloat(kolom[6]);
-                if (kolom.length >= 9 && kolom[8]) remarksExcel = kolom[8].trim();
-
-                parsedRows.push({
-                    partNo: targetPartNo,
-                    deskripsi: kolom[1] ? kolom[1].trim() : "-",
-                    group: kolom[2] ? kolom[2].trim() : "-",
-                    type: kolom[3] ? kolom[3].trim() : "-",
-                    unit: kolom[4] ? kolom[4].trim() : "-",
-                    sistem: cleanStokSistem,
-                    fisikExcel,
-                    remarksExcel
-                });
-            });
-
-            if (parsedRows.length === 0) {
-                alert("Data tidak dikenali.");
-                return;
-            }
-
-            // Hitung berapa remarks di cloud dan di Excel
-            const jumlahRemarksCloud = inventoryData.filter(i => i.remarks && i.remarks.trim() !== "").length;
-            const jumlahRemarksExcel = parsedRows.filter(r => r.remarksExcel && r.remarksExcel.trim() !== "").length;
-
-            // Simpan context ke pending
-            pendingPasteData = { parsedRows, perbaruiStokSistem, hapusFisikLama };
-
-            // Jika ada remarks di cloud, tampilkan modal konfirmasi
-            if (jumlahRemarksCloud > 0) {
-                document.getElementById('statRemarksCloud').innerText = jumlahRemarksCloud;
-                document.getElementById('statRemarksExcel').innerText = jumlahRemarksExcel;
-                // Reset ke opsi default (keep)
-                document.querySelector('input[name="remarksAction"][value="keep"]').checked = true;
-                document.querySelectorAll('.remarks-option').forEach(el => el.classList.remove('selected'));
-                document.getElementById('optKeep').classList.add('selected');
-                document.getElementById('remarksConfirmModal').style.display = 'flex';
-            } else {
-                // Tidak ada remarks lama, langsung lanjutkan dengan merge (ambil dari Excel jika ada)
-                finalizePaste('merge');
-            }
-        });
-
-        // Interaksi visual radio button di modal remarks
-        document.querySelectorAll('.remarks-option').forEach(label => {
-            label.addEventListener('click', function() {
-                document.querySelectorAll('.remarks-option').forEach(el => el.classList.remove('selected'));
-                this.classList.add('selected');
-            });
-        });
-
-        document.getElementById('btnCancelRemarks').addEventListener('click', () => {
-            document.getElementById('remarksConfirmModal').style.display = 'none';
-            pendingPasteData = null;
-            alert("Operasi paste dibatalkan. Data Remarks di cloud tidak berubah.");
-        });
-
-        document.getElementById('btnConfirmRemarks').addEventListener('click', () => {
-            const pilihanRemarks = document.querySelector('input[name="remarksAction"]:checked').value;
-            document.getElementById('remarksConfirmModal').style.display = 'none';
-            finalizePaste(pilihanRemarks);
-        });
-
-        function finalizePaste(remarksAction) {
-            if (!pendingPasteData) return;
-            const { parsedRows, perbaruiStokSistem, hapusFisikLama } = pendingPasteData;
-            pendingPasteData = null;
-
-            let dataHasilSinkronisasi = JSON.parse(JSON.stringify(inventoryData));
-
-            parsedRows.forEach(row => {
-                const indexItemLama = dataHasilSinkronisasi.findIndex(i => i.partNo === row.partNo);
-
-                if (indexItemLama !== -1) {
-                    // Update field non-remarks
-                    dataHasilSinkronisasi[indexItemLama].deskripsi = row.deskripsi;
-                    dataHasilSinkronisasi[indexItemLama].group = row.group;
-                    dataHasilSinkronisasi[indexItemLama].type = row.type;
-                    dataHasilSinkronisasi[indexItemLama].unit = row.unit;
-                    if (perbaruiStokSistem) dataHasilSinkronisasi[indexItemLama].sistem = row.sistem;
-                    if (hapusFisikLama) dataHasilSinkronisasi[indexItemLama].fisik = row.fisikExcel;
-
-                    // Logika remarks berdasarkan pilihan user
-                    const remarksCloudAda = dataHasilSinkronisasi[indexItemLama].remarks && dataHasilSinkronisasi[indexItemLama].remarks.trim() !== "";
-                    if (remarksAction === 'keep') {
-                        // Tidak ubah remarks cloud sama sekali
-                        // (tidak ada operasi)
-                    } else if (remarksAction === 'merge') {
-                        // Cloud prioritas: hanya isi jika cloud kosong dan Excel ada isinya
-                        if (!remarksCloudAda && row.remarksExcel) {
-                            dataHasilSinkronisasi[indexItemLama].remarks = row.remarksExcel;
-                        }
-                    } else if (remarksAction === 'overwrite') {
-                        // Timpa total dengan Excel (termasuk kosong)
-                        dataHasilSinkronisasi[indexItemLama].remarks = row.remarksExcel || "";
+                if (kolom.length >= 2) {
+                    if (kolom[0].toLowerCase().includes("part no") || kolom[1].toLowerCase().includes("desc")) return;
+                    
+                    const targetPartNo = kolom[0].trim();
+                    let cleanStokSistem = 0;
+                    
+                    if (kolom.length >= 8) {
+                        cleanStokSistem = parseFloat(kolom[5].replace(/,/g, '')) || 0;
+                    } else if (kolom.length === 7) {
+                        cleanStokSistem = parseFloat(kolom[6].replace(/,/g, '')) || 0;
+                    } else {
+                        cleanStokSistem = parseFloat(kolom[kolom.length - 1].replace(/,/g, '')) || 0;
                     }
-                } else {
-                    // Item baru: tidak ada remarks cloud, ambil dari Excel
-                    dataHasilSinkronisasi.push({
-                        partNo: row.partNo,
-                        deskripsi: row.deskripsi,
-                        group: row.group,
-                        type: row.type,
-                        unit: row.unit,
-                        sistem: row.sistem,
-                        fisik: row.fisikExcel,
-                        remarks: row.remarksExcel || ""
-                    });
+
+                    const indexItemLama = dataHasilSinkronisasi.findIndex(i => i.partNo === targetPartNo);
+
+                    if (indexItemLama !== -1) {
+                        dataHasilSinkronisasi[indexItemLama].deskripsi = kolom[1] ? kolom[1].trim() : dataHasilSinkronisasi[indexItemLama].deskripsi;
+                        dataHasilSinkronisasi[indexItemLama].group = kolom[2] ? kolom[2].trim() : dataHasilSinkronisasi[indexItemLama].group;
+                        dataHasilSinkronisasi[indexItemLama].type = kolom[3] ? kolom[3].trim() : dataHasilSinkronisasi[indexItemLama].type;
+                        dataHasilSinkronisasi[indexItemLama].unit = kolom[4] ? kolom[4].trim() : dataHasilSinkronisasi[indexItemLama].unit;
+                        
+                        if (perbaruiStokSistem) dataHasilSinkronisasi[indexItemLama].sistem = cleanStokSistem;
+                        if (hapusFisikLama) dataHasilSinkronisasi[indexItemLama].fisik = (kolom.length >= 8 && kolom[6] !== "" && kolom[6] !== "0") ? parseFloat(kolom[6]) : "";
+                        if (izinkanTimpaRemarks) dataHasilSinkronisasi[indexItemLama].remarks = (kolom.length >= 9 && kolom[8]) ? kolom[8].trim() : "";
+                    } else {
+                        let fisikBaru = ""; let remarksBaru = "";
+                        if (kolom.length >= 8 && kolom[6] !== "" && kolom[6] !== "0") fisikBaru = parseFloat(kolom[6]);
+                        if (kolom.length >= 9 && kolom[8]) remarksBaru = kolom[8].trim();
+
+                        dataHasilSinkronisasi.push({
+                            partNo: targetPartNo,
+                            deskripsi: kolom[1] ? kolom[1].trim() : "-",
+                            group: kolom[2] ? kolom[2].trim() : "-",
+                            type: kolom[3] ? kolom[3].trim() : "-",
+                            unit: kolom[4] ? kolom[4].trim() : "-",
+                            sistem: cleanStokSistem,
+                            fisik: fisikBaru,
+                            remarks: remarksBaru,
+                            imageUrl: "" // Mengosongkan data foto awal untuk barang baru
+                        });
+                    }
                 }
             });
 
-            const opsiTanggal = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute:'2-digit' };
-            const waktuSkrg = new Date().toLocaleDateString('id-ID', opsiTanggal) + " WITA";
-            
-            set(ref(db, 'inventory_root'), { items: dataHasilSinkronisasi, lastUpdate: waktuSkrg })
-                .then(() => {
-                    const labelRemarks = remarksAction === 'keep' ? 'Semua catatan cloud dipertahankan.' :
-                                        remarksAction === 'merge' ? 'Catatan cloud dipertahankan (item baru mengambil dari Excel).' :
-                                        'Catatan ditimpa dengan data Excel.';
-                    alert(`Berhasil sinkronisasi. Total data di Cloud: ${dataHasilSinkronisasi.length} item.\n\nStatus Remarks: ${labelRemarks}`);
-                })
-                .catch(err => alert("Gagal mengunggah! Periksa Rules Firebase Anda."));
-        }
+            if (dataHasilSinkronisasi.length > 0) {
+                const opsiTanggal = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute:'2-digit' };
+                const waktuSkrg = new Date().toLocaleDateString('id-ID', opsiTanggal) + " WITA";
+                
+                isInitialLoad = true; 
+                set(ref(db, 'inventory_root'), { items: dataHasilSinkronisasi, lastUpdate: waktuSkrg })
+                    .then(() => alert(`Berhasil sinkronisasi. Total data di Cloud sekarang: ${dataHasilSinkronisasi.length} item.`))
+                    .catch(err => alert("Gagal mengunggah! Periksa Rules Firebase Anda."));
+            } else {
+                alert("Data tidak dikenali. Pastikan Anda telah menyalin baris tabel dari Excel.");
+            }
+        });
 
-        // Form Tambah Data Manual
+        // Fungsi Logika Modal Form Tambah Data Manual
         const modal = document.getElementById("addModal");
         document.getElementById("btnOpenModal").addEventListener("click", () => { modal.style.display = "flex"; document.getElementById("formPartNo").focus(); });
         document.getElementById("btnCloseModal").addEventListener("click", () => { modal.style.display = "none"; });
@@ -649,23 +571,29 @@
             const unit = document.getElementById("formUnit").value.trim();
             const sistem = parseFloat(document.getElementById("formSistem").value) || 0;
 
-            if (!partNo || !deskripsi) { alert("Kolom Part No dan Deskripsi wajib diisi!"); return; }
+            if (!partNo || !deskripsi) {
+                alert("Kolom Part No dan Deskripsi Barang wajib diisi!");
+                return;
+            }
 
-            const itemBaru = { partNo, deskripsi, group, type, unit, sistem, fisik: "", remarks: "" };
+            const itemBaru = { partNo, deskripsi, group, type, unit, sistem, fisik: "", remarks: "", imageUrl: "" };
             inventoryData.push(itemBaru);
 
             const opsiTanggal = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute:'2-digit' };
             const waktuSkrg = new Date().toLocaleDateString('id-ID', opsiTanggal) + " WITA";
 
-            set(ref(db, 'inventory_root'), { items: inventoryData, lastUpdate: waktuSkrg }).then(() => {
-                modal.style.display = "none";
-                document.getElementById("formPartNo").value = "";
-                document.getElementById("formDeskripsi").value = "";
-                document.getElementById("formGroup").value = "";
-                document.getElementById("formUnit").value = "";
-                document.getElementById("formSistem").value = "0";
-                alert("Item baru berhasil ditambahkan!");
-            });
+            set(ref(db, 'inventory_root'), { items: inventoryData, lastUpdate: waktuSkrg })
+                .then(() => {
+                    modal.style.display = "none";
+                    document.getElementById("formPartNo").value = "";
+                    document.getElementById("formDeskripsi").value = "";
+                    document.getElementById("formGroup").value = "";
+                    document.getElementById("formUnit").value = "";
+                    document.getElementById("formSistem").value = "0";
+                    
+                    applySearchAndRender();
+                    alert("Item baru berhasil ditambahkan secara permanen!");
+                });
         });
 
         document.getElementById('btnCopy').addEventListener('click', function() {
@@ -689,7 +617,10 @@
 
         document.getElementById('btnReset').addEventListener('click', function() {
             if (confirm("Apakah Anda yakin ingin mengosongkan cloud? Data lama akan terhapus selamanya.")) {
-                set(ref(db, 'inventory_root'), null).then(() => alert("Cloud berhasil dikosongkan!"));
+                isInitialLoad = true;
+                set(ref(db, 'inventory_root'), null)
+                    .then(() => alert("Cloud berhasil dikosongkan!"))
+                    .catch(err => alert("Gagal menghapus cloud!"));
             }
         });
     </script>
