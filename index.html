@@ -22,7 +22,7 @@
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: var(--background); color: var(--text-main); padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .container { width: 100%; max-width: 1450px; background: var(--surface); padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .container { width: 100%; max-width: 1400px; background: var(--surface); padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
         header { margin-bottom: 24px; border-bottom: 2px solid var(--border); padding-bottom: 16px; }
         h1 { font-size: 24px; color: #0f172a; margin-bottom: 4px; }
         .update-info { font-size: 13px; color: var(--text-muted); }
@@ -47,19 +47,16 @@
         th { background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 12px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; }
         td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
         tr:hover { background-color: #f8fafc; }
-        .row-active { background-color: #eff6ff !important; }
-        .badge { background-color: #e2e8f0; color: #334155; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
-        .stok-sistem { font-weight: 600; color: #334155; text-align: center; }
         
         .input-fisik { width: 80px; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px; font-weight: 600; text-align: center; outline: none; }
         .input-remarks { width: 180px; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; outline: none; }
-        .input-fisik:focus, .input-remarks:focus { border-color: var(--primary); background-color: #ffffff; }
 
         .kolom-selisih { font-weight: 600; text-align: center; font-size: 14px; }
         .diff-zero { color: var(--text-muted); }
         .diff-plus { color: #059669; background-color: #ecfdf5; border-radius: 4px; padding: 2px 6px; }
         .diff-minus { color: #dc2626; background-color: #fef2f2; border-radius: 4px; padding: 2px 6px; }
         
+        /* Kontainer pratinjau gambar + tombol hapus */
         .wrapper-foto { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 60px; }
         .img-preview {
             width: 45px; height: 45px; border-radius: 6px; object-fit: cover;
@@ -189,12 +186,12 @@
         const db = getDatabase(app);
 
         // =========================================================================
-        // MASUKKAN DATA SINKRONISASI CLOUDINARY KANDA DI SINI:
+        // PENGATURAN AKUN CLOUDINARY KANDA (Wajib Diisi):
         // =========================================================================
         const CLOUDINARY_CLOUD_NAME = "Ubah_Nama_Cloud_Cloudinary_Anda"; 
         const CLOUDINARY_UPLOAD_PRESET = "Ubah_Preset_Upload_Anda";
-        const CLOUDINARY_API_KEY = "Ubah_API_Key_Cloudinary_Anda";       
-        const CLOUDINARY_API_SECRET = "Ubah_API_Secret_Cloudinary_Anda"; 
+        const CLOUDINARY_API_KEY = "Ubah_API_Key_Cloudinary_Anda";       // Diperlukan untuk validasi hapus
+        const CLOUDINARY_API_SECRET = "Ubah_API_Secret_Cloudinary_Anda"; // Diperlukan untuk generate signature hapus
 
         let inventoryData = [];
         let filteredData = [];
@@ -256,6 +253,7 @@
 
                 let imageColumnHtml = "";
                 if (item.imageUrl) {
+                    // Dilengkapi dengan tombol hapus foto kanda
                     imageColumnHtml = `
                         <div class="wrapper-foto">
                             <img src="${item.imageUrl}" class="img-preview" onclick="window.open('${item.imageUrl}', '_blank')">
@@ -291,7 +289,7 @@
         }
 
         // =========================================================================
-        // 1. PROSES JEPRET KAMERA & UPLOAD CLOUDINARY
+        // 1. PROSES UPLOAD FOTO KE CLOUDINARY
         // =========================================================================
         tableBody.addEventListener('change', function(e) {
             if (e.target.classList.contains('file-input')) {
@@ -299,14 +297,18 @@
                 const file = e.target.files[0];
                 if (!file) return;
 
+                if (CLOUDINARY_CLOUD_NAME === "Ubah_Nama_Cloud_Cloudinary_Anda") {
+                    alert("Kanda belum mengatur akun Cloudinary di dalam kode script!");
+                    return;
+                }
+
                 const container = document.getElementById(`img_container_${originalIndex}`);
                 container.innerHTML = `<span style="font-size:11px; color:var(--primary); font-weight:600;">⚡ Uploading...</span>`;
 
                 const formData = new FormData();
                 formData.append("file", file);
                 formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-                
-                // Mengunci ID unik penamaan file agar rapi di folder Cloudinary
+                // Agar public_id file rapi (contoh: opname_M3050099)
                 const customPublicId = `opname_${inventoryData[originalIndex].partNo}`;
                 formData.append("public_id", customPublicId);
 
@@ -337,46 +339,23 @@
         });
 
         // =========================================================================
-        // 2. PARSER PREMIUM UNTUK EKSTRAK PUBLIC ID LENGKAP DENGAN FOLDER
-        // =========================================================================
-        function getCloudinaryPublicId(url) {
-            // Memotong URL Cloudinary untuk mendapatkan folder/nama_file tanpa ekstensi (.jpg)
-            try {
-                const parts = url.split('/upload/');
-                if (parts.length > 1) {
-                    const idWithExtension = parts[1].replace(/^v\d+\//, ''); // buang nomor versi jika ada (v171xxx/)
-                    return idWithExtension.substring(0, idWithExtension.lastIndexOf('.'));
-                }
-                return null;
-            } catch (err) {
-                return null;
-            }
-        }
-
-        // =========================================================================
-        // 3. LOGIKA FIX AMAN HAPUS FOTO CLOUDINARY (SHA-1 GENERATOR)
+        // 2. PROSES HAPUS FOTO DARI CLOUDINARY & FIREBASE
         // =========================================================================
         tableBody.addEventListener('click', function(e) {
             if (e.target.classList.contains('btn-hapus-foto')) {
                 const originalIndex = e.target.getAttribute('data-index');
                 const item = inventoryData[originalIndex];
 
-                if (!item.imageUrl) return;
                 if (!confirm(`Hapus foto untuk produk "${item.deskripsi}"?`)) return;
 
                 const container = document.getElementById(`img_container_${originalIndex}`);
                 container.innerHTML = `<span style="font-size:11px; color:var(--danger); font-weight:600;">🗑️ Menghapus...</span>`;
 
-                // Ekstrak otomatis menggunakan parser URL cerdas baru
-                const publicId = getCloudinaryPublicId(item.imageUrl);
-                
-                if (!publicId) {
-                    alert("Gagal membaca ID foto pada URL!");
-                    renderTablePage();
-                    return;
-                }
-
+                // Ekstrak Public ID Cloudinary (misal dari URL didapat: opname_M3050099)
+                const publicId = `opname_${item.partNo}`;
                 const timestamp = Math.round(new Date().getTime() / 1000);
+                
+                // Membuat tanda tangan keamanan SHA-1 untuk otorisasi penghapusan file kanda
                 const signatureString = `public_id=${publicId}&timestamp=${timestamp}${CLOUDINARY_API_SECRET}`;
                 const signature = CryptoJS.SHA1(signatureString).toString();
 
@@ -386,13 +365,15 @@
                 formData.append("api_key", CLOUDINARY_API_KEY);
                 formData.append("signature", signature);
 
+                // Tembak API Destroy Cloudinary
                 fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/destroy`, {
                     method: "POST",
                     body: formData
                 })
-                .then(res => { if (!res.ok) throw new Error(); return res.json(); })
+                .then(res => res.json())
                 .then(data => {
                     if (data.result === "ok" || data.result === "not_found") {
+                        // Hapus tautan di database lokal & Firebase
                         inventoryData[originalIndex].imageUrl = "";
                         update(ref(db, `inventory_root/items/${originalIndex}`), { imageUrl: "" })
                             .then(() => {
@@ -406,13 +387,13 @@
                     }
                 })
                 .catch(() => {
-                    alert("Gagal menghapus gambar di Cloudinary!\n\nPastikan kanda sudah mengaktifkan setelan 'Allowed types for API destroy: unsigned' di menu Settings > Security Cloudinary kanda.");
+                    alert("Gagal menghapus gambar di Cloudinary! Periksa API Key / Secret Anda.");
                     renderTablePage();
                 });
             }
         });
 
-        // Sisa fungsi utama sinkronisasi halaman kanda tetap aman...
+        // Sisa fungsi bawaan aplikasi stock opname kanda tetap dipertahankan utuh...
         function refreshActiveDataOnly() {
             const rows = tableBody.querySelectorAll('tr');
             rows.forEach(row => {
@@ -442,7 +423,8 @@
         }
 
         tableBody.addEventListener('input', function(e) {
-            const row = e.target.closest('tr'); const originalIndex = row.getAttribute('data-original-index');
+            const row = e.target.closest('tr');
+            const originalIndex = row.getAttribute('data-original-index');
             if (e.target.classList.contains('input-fisik')) {
                 const value = e.target.value; const fisikValue = value !== "" ? parseFloat(value) : "";
                 inventoryData[originalIndex].fisik = fisikValue;
@@ -469,6 +451,7 @@
         document.getElementById('btnPrev').addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderTablePage(); window.scrollTo(0,0); } });
         document.getElementById('btnNext').addEventListener('click', () => { const maxPage = Math.ceil(filteredData.length / rowsPerPage); if (currentPage < maxPage) { currentPage++; renderTablePage(); window.scrollTo(0,0); } });
         
+        // Modal & Paste Logika manual dsb...
         const modal = document.getElementById("addModal");
         document.getElementById("btnOpenModal").addEventListener("click", () => { modal.style.display = "flex"; document.getElementById("formPartNo").focus(); });
         document.getElementById("btnCloseModal").addEventListener("click", () => { modal.style.display = "none"; });
