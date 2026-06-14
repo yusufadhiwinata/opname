@@ -166,8 +166,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-        import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
+        // Teks FirebaseConfig (Tetap dipertahankan untuk database teks Realtime)
         const firebaseConfig = {
             apiKey: "AIzaSyBCmlVCm69mAJP0m8DoojN1uus9XMuwgEk",
             authDomain: "opname-rinra.firebaseapp.com",
@@ -181,8 +181,13 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        const storage = getStorage(app);
-        
+
+        // =========================================================================
+        // PENGATURAN LOG IN CLOUDINARY KANDA (Ganti Sesuai Akun Anda):
+        // =========================================================================
+        const CLOUDINARY_CLOUD_NAME = "dvrpyvkyc"; 
+        const CLOUDINARY_UPLOAD_PRESET = "preset";
+
         let inventoryData = [];
         let filteredData = [];
         let firebaseTimeouts = {}; 
@@ -190,7 +195,6 @@
         const rowsPerPage = 50; 
         let isInitialLoad = true; 
 
-        // 1. Ambil Data Realtime dari Cloud Firebase
         const dbRef = ref(db, 'inventory_root');
         onValue(dbRef, (snapshot) => {
             const dataRaw = snapshot.val();
@@ -218,7 +222,6 @@
             console.error(error);
         });
 
-        // 2. Render Tabel Dinamis (Kolom Shortcut Dihapus, Kamera Aktif)
         function renderTablePage(shouldFocusFirstRow = false) {
             const tbody = document.getElementById('tableBody');
             if (filteredData.length === 0) {
@@ -248,7 +251,6 @@
                 const fisikVal = (item.fisik !== undefined && item.fisik !== null) ? item.fisik : "";
                 const remarksVal = item.remarks ? item.remarks : "";
 
-                // MODIFIKASI: Input file dikunci menggunakan capture="environment" untuk langsung mentembak kamera HP
                 let imageColumnHtml = "";
                 if (item.imageUrl) {
                     imageColumnHtml = `<img src="${item.imageUrl}" class="img-preview" onclick="window.open('${item.imageUrl}', '_blank')">`;
@@ -315,41 +317,55 @@
             document.getElementById('btnNext').disabled = (currentPage === maxPage || filteredData.length === 0);
         }
 
-        const tableBody = document.getElementById('tableBody');
-        tableBody.addEventListener('focusin', (e) => { if (e.target.classList.contains('input-fisik') || e.target.classList.contains('input-remarks')) e.target.closest('tr').classList.add('row-active'); });
-        tableBody.addEventListener('focusout', (e) => { if (e.target.classList.contains('input-fisik') || e.target.classList.contains('input-remarks')) e.target.closest('tr').classList.remove('row-active'); });
-
-        // 3. Menangani Tangkapan Kamera & Upload Langsung ke Firebase Storage
+        // 3. PROSES TEMBAK KAMERA & UPLOAD LANGSUNG KE CLOUDINARY (SANGAT SMOOTH)
         tableBody.addEventListener('change', function(e) {
             if (e.target.classList.contains('file-input')) {
                 const originalIndex = e.target.getAttribute('data-index');
                 const file = e.target.files[0];
                 if (!file) return;
 
+                if (CLOUDINARY_CLOUD_NAME === "Ubah_Nama_Cloud_Cloudinary_Anda") {
+                    alert("Kanda belum mengatur Nama Cloud & Preset Cloudinary di dalam kode script!");
+                    return;
+                }
+
                 const container = document.getElementById(`img_container_${originalIndex}`);
-                container.innerHTML = `<span style="font-size:11px; color:var(--primary); font-weight:600;">⚡ Uploading...</span>`;
+                container.innerHTML = `<span style="font-size:11px; color:var(--primary); font-weight:600;">⚡ Cloudinary...</span>`;
 
-                const fileExtension = file.name.split('.').pop() || 'jpg';
-                const pathStorage = `item_images/${inventoryData[originalIndex].partNo}_${Date.now()}.${fileExtension}`;
-                const storageRef = sRef(storage, pathStorage);
+                // Siapkan paket form data untuk Cloudinary tanpa secret key
+                const formData = new FormData();
+                formData.append("file", file);
+                formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+                formData.append("folder", "opname_rinra_images"); // Menyimpan otomatis di folder khusus Cloudinary
 
-                uploadBytes(storageRef, file).then((snapshot) => {
-                    getDownloadURL(snapshot.ref).then((downloadUrl) => {
-                        inventoryData[originalIndex].imageUrl = downloadUrl;
-                        
-                        update(ref(db, `inventory_root/items/${originalIndex}`), { imageUrl: downloadUrl })
-                            .then(() => {
-                                container.innerHTML = `<img src="${downloadUrl}" class="img-preview" onclick="window.open('${downloadUrl}', '_blank')">`;
-                            });
-                    });
-                }).catch(err => {
-                    alert("Gagal mengunggah foto. Pastikan Rules Firebase Storage sudah dibuka!");
+                // Kirim data gambar menggunakan fetch langsung ke API Cloudinary
+                fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+                    method: "POST",
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error("Gagal upload Cloudinary");
+                    return response.json();
+                })
+                .then(data => {
+                    // Ambil secure URL publik gambar (.jpg / .png) dari Cloudinary
+                    const secureUrl = data.secure_url;
+                    inventoryData[originalIndex].imageUrl = secureUrl;
+                    
+                    // Simpan tautan URL gambar Cloudinary ke database teks Firebase Realtime kanda
+                    update(ref(db, `inventory_root/items/${originalIndex}`), { imageUrl: secureUrl })
+                        .then(() => {
+                            container.innerHTML = `<img src="${secureUrl}" class="img-preview" onclick="window.open('${secureUrl}', '_blank')">`;
+                        });
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("Gagal mengunggah foto ke Cloudinary! Pastikan Mode Preset Upload di Cloudinary sudah disetel ke 'Unsigned'.");
                     renderTablePage();
                 });
             }
         });
 
-        // 4. Navigasi Keyboard Tanpa Lompat Halaman
         tableBody.addEventListener('keydown', function(e) {
             if (e.target.classList.contains('input-fisik')) {
                 const currentRowIndex = parseInt(e.target.getAttribute('data-row'));
@@ -439,7 +455,6 @@
             return rowText.includes('\t') ? rowText.split('\t') : rowText.split(/\s{2,}/).map(p => p.trim()).filter(p => p !== "");
         }
 
-        // 5. Fitur Paste Data Baru dengan 3 Tingkat Dialog Proteksi Data yang Aman
         document.getElementById('btnPaste').addEventListener('click', async function() {
             let text = "";
             try {
@@ -596,7 +611,7 @@
                 isInitialLoad = true;
                 set(ref(db, 'inventory_root'), null)
                     .then(() => alert("Cloud berhasil dikosongkan!"))
-                    .catch(err => alert("Gagal menghapus cloud! Periksa Rules Firebase."));
+                    .catch(err => alert("Gagal menghapus cloud!"));
             }
         });
     </script>
