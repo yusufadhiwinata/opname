@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Stock Opname - Rinra</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -47,27 +46,24 @@
         th { background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 12px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; }
         td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
         tr:hover { background-color: #f8fafc; }
+        .row-active { background-color: #eff6ff !important; }
+        .badge { background-color: #e2e8f0; color: #334155; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
+        .stok-sistem { font-weight: 600; color: #334155; text-align: center; }
         
         .input-fisik { width: 80px; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px; font-weight: 600; text-align: center; outline: none; }
         .input-remarks { width: 180px; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; outline: none; }
+        .input-fisik:focus, .input-remarks:focus { border-color: var(--primary); background-color: #ffffff; }
 
         .kolom-selisih { font-weight: 600; text-align: center; font-size: 14px; }
         .diff-zero { color: var(--text-muted); }
         .diff-plus { color: #059669; background-color: #ecfdf5; border-radius: 4px; padding: 2px 6px; }
         .diff-minus { color: #dc2626; background-color: #fef2f2; border-radius: 4px; padding: 2px 6px; }
         
-        /* Kontainer pratinjau gambar + tombol hapus */
-        .wrapper-foto { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 60px; }
         .img-preview {
             width: 45px; height: 45px; border-radius: 6px; object-fit: cover;
             border: 1px solid var(--border); cursor: pointer; transition: transform 0.2s;
         }
         .img-preview:hover { transform: scale(1.1); }
-        .btn-hapus-foto {
-            background: none; border: none; color: var(--danger); font-size: 10px; 
-            font-weight: bold; cursor: pointer; padding: 2px 6px; border-radius: 4px;
-        }
-        .btn-hapus-foto:hover { background-color: #fef2f2; }
         
         .upload-label {
             padding: 5px 10px; background-color: #f1f5f9; border: 1px solid var(--border);
@@ -171,6 +167,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
+        // Teks FirebaseConfig (Tetap dipertahankan untuk database teks Realtime)
         const firebaseConfig = {
             apiKey: "AIzaSyBCmlVCm69mAJP0m8DoojN1uus9XMuwgEk",
             authDomain: "opname-rinra.firebaseapp.com",
@@ -186,12 +183,10 @@
         const db = getDatabase(app);
 
         // =========================================================================
-        // PENGATURAN AKUN CLOUDINARY KANDA (Wajib Diisi):
+        // PENGATURAN LOG IN CLOUDINARY KANDA (Ganti Sesuai Akun Anda):
         // =========================================================================
         const CLOUDINARY_CLOUD_NAME = "dvrpyvkyc"; 
         const CLOUDINARY_UPLOAD_PRESET = "preset";
-        const CLOUDINARY_API_KEY = "279871863653533";       // Diperlukan untuk validasi hapus
-        const CLOUDINARY_API_SECRET = "QOdzzQlQKqE7_52nq-qUAF6GDD0"; // Diperlukan untuk generate signature hapus
 
         let inventoryData = [];
         let filteredData = [];
@@ -205,12 +200,14 @@
             const dataRaw = snapshot.val();
             if (dataRaw && dataRaw.items) {
                 inventoryData = dataRaw.items;
+                
                 if (isInitialLoad) {
                     applySearchAndRender();
                     isInitialLoad = false;
                 } else {
                     refreshActiveDataOnly();
                 }
+
                 if (dataRaw.lastUpdate) {
                     document.getElementById('updateDate').innerText = `Terakhir diperbarui: ${dataRaw.lastUpdate}`;
                 }
@@ -220,6 +217,9 @@
                 document.getElementById('updateDate').innerText = "Terakhir diperbarui: Belum ada data di cloud";
                 updatePaginationControls();
             }
+        }, (error) => {
+            document.getElementById('updateDate').innerText = "Error: Cek konfigurasi cloud!";
+            console.error(error);
         });
 
         function renderTablePage(shouldFocusFirstRow = false) {
@@ -253,13 +253,7 @@
 
                 let imageColumnHtml = "";
                 if (item.imageUrl) {
-                    // Dilengkapi dengan tombol hapus foto kanda
-                    imageColumnHtml = `
-                        <div class="wrapper-foto">
-                            <img src="${item.imageUrl}" class="img-preview" onclick="window.open('${item.imageUrl}', '_blank')">
-                            <button class="btn-hapus-foto" data-index="${item.originalIndex}">❌ Hapus</button>
-                        </div>
-                    `;
+                    imageColumnHtml = `<img src="${item.imageUrl}" class="img-preview" onclick="window.open('${item.imageUrl}', '_blank')">`;
                 } else {
                     imageColumnHtml = `
                         <label class="upload-label" for="file_${item.originalIndex}">📷 Kamera</label>
@@ -286,114 +280,15 @@
             tbody.innerHTML = "";
             tbody.appendChild(fragment);
             updatePaginationControls();
+
+            if (shouldFocusFirstRow) {
+                setTimeout(() => {
+                    const firstInput = tbody.querySelector('.input-fisik[data-row="0"]');
+                    if (firstInput) firstInput.focus();
+                }, 50);
+            }
         }
 
-        // =========================================================================
-        // 1. PROSES UPLOAD FOTO KE CLOUDINARY
-        // =========================================================================
-        tableBody.addEventListener('change', function(e) {
-            if (e.target.classList.contains('file-input')) {
-                const originalIndex = e.target.getAttribute('data-index');
-                const file = e.target.files[0];
-                if (!file) return;
-
-                if (CLOUDINARY_CLOUD_NAME === "Ubah_Nama_Cloud_Cloudinary_Anda") {
-                    alert("Kanda belum mengatur akun Cloudinary di dalam kode script!");
-                    return;
-                }
-
-                const container = document.getElementById(`img_container_${originalIndex}`);
-                container.innerHTML = `<span style="font-size:11px; color:var(--primary); font-weight:600;">⚡ Uploading...</span>`;
-
-                const formData = new FormData();
-                formData.append("file", file);
-                formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-                // Agar public_id file rapi (contoh: opname_M3050099)
-                const customPublicId = `opname_${inventoryData[originalIndex].partNo}`;
-                formData.append("public_id", customPublicId);
-
-                fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
-                    method: "POST",
-                    body: formData
-                })
-                .then(res => { if (!res.ok) throw new Error(); return res.json(); })
-                .then(data => {
-                    const secureUrl = data.secure_url;
-                    inventoryData[originalIndex].imageUrl = secureUrl;
-                    
-                    update(ref(db, `inventory_root/items/${originalIndex}`), { imageUrl: secureUrl })
-                        .then(() => {
-                            container.innerHTML = `
-                                <div class="wrapper-foto">
-                                    <img src="${secureUrl}" class="img-preview" onclick="window.open('${secureUrl}', '_blank')">
-                                    <button class="btn-hapus-foto" data-index="${originalIndex}">❌ Hapus</button>
-                                </div>
-                            `;
-                        });
-                })
-                .catch(() => {
-                    alert("Gagal mengunggah foto!");
-                    renderTablePage();
-                });
-            }
-        });
-
-        // =========================================================================
-        // 2. PROSES HAPUS FOTO DARI CLOUDINARY & FIREBASE
-        // =========================================================================
-        tableBody.addEventListener('click', function(e) {
-            if (e.target.classList.contains('btn-hapus-foto')) {
-                const originalIndex = e.target.getAttribute('data-index');
-                const item = inventoryData[originalIndex];
-
-                if (!confirm(`Hapus foto untuk produk "${item.deskripsi}"?`)) return;
-
-                const container = document.getElementById(`img_container_${originalIndex}`);
-                container.innerHTML = `<span style="font-size:11px; color:var(--danger); font-weight:600;">🗑️ Menghapus...</span>`;
-
-                // Ekstrak Public ID Cloudinary (misal dari URL didapat: opname_M3050099)
-                const publicId = `opname_${item.partNo}`;
-                const timestamp = Math.round(new Date().getTime() / 1000);
-                
-                // Membuat tanda tangan keamanan SHA-1 untuk otorisasi penghapusan file kanda
-                const signatureString = `public_id=${publicId}&timestamp=${timestamp}${CLOUDINARY_API_SECRET}`;
-                const signature = CryptoJS.SHA1(signatureString).toString();
-
-                const formData = new FormData();
-                formData.append("public_id", publicId);
-                formData.append("timestamp", timestamp);
-                formData.append("api_key", CLOUDINARY_API_KEY);
-                formData.append("signature", signature);
-
-                // Tembak API Destroy Cloudinary
-                fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/destroy`, {
-                    method: "POST",
-                    body: formData
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.result === "ok" || data.result === "not_found") {
-                        // Hapus tautan di database lokal & Firebase
-                        inventoryData[originalIndex].imageUrl = "";
-                        update(ref(db, `inventory_root/items/${originalIndex}`), { imageUrl: "" })
-                            .then(() => {
-                                container.innerHTML = `
-                                    <label class="upload-label" for="file_${originalIndex}">📷 Kamera</label>
-                                    <input type="file" id="file_${originalIndex}" class="file-input" data-index="${originalIndex}" accept="image/*" capture="environment" style="display:none;">
-                                `;
-                            });
-                    } else {
-                        throw new Error();
-                    }
-                })
-                .catch(() => {
-                    alert("Gagal menghapus gambar di Cloudinary! Periksa API Key / Secret Anda.");
-                    renderTablePage();
-                });
-            }
-        });
-
-        // Sisa fungsi bawaan aplikasi stock opname kanda tetap dipertahankan utuh...
         function refreshActiveDataOnly() {
             const rows = tableBody.querySelectorAll('tr');
             rows.forEach(row => {
@@ -422,19 +317,121 @@
             document.getElementById('btnNext').disabled = (currentPage === maxPage || filteredData.length === 0);
         }
 
+        // 3. PROSES TEMBAK KAMERA & UPLOAD LANGSUNG KE CLOUDINARY (SANGAT SMOOTH)
+        tableBody.addEventListener('change', function(e) {
+            if (e.target.classList.contains('file-input')) {
+                const originalIndex = e.target.getAttribute('data-index');
+                const file = e.target.files[0];
+                if (!file) return;
+
+                if (CLOUDINARY_CLOUD_NAME === "Ubah_Nama_Cloud_Cloudinary_Anda") {
+                    alert("Kanda belum mengatur Nama Cloud & Preset Cloudinary di dalam kode script!");
+                    return;
+                }
+
+                const container = document.getElementById(`img_container_${originalIndex}`);
+                container.innerHTML = `<span style="font-size:11px; color:var(--primary); font-weight:600;">⚡ Cloudinary...</span>`;
+
+                // Siapkan paket form data untuk Cloudinary tanpa secret key
+                const formData = new FormData();
+                formData.append("file", file);
+                formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+                formData.append("folder", "opname_rinra_images"); // Menyimpan otomatis di folder khusus Cloudinary
+
+                // Kirim data gambar menggunakan fetch langsung ke API Cloudinary
+                fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+                    method: "POST",
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error("Gagal upload Cloudinary");
+                    return response.json();
+                })
+                .then(data => {
+                    // Ambil secure URL publik gambar (.jpg / .png) dari Cloudinary
+                    const secureUrl = data.secure_url;
+                    inventoryData[originalIndex].imageUrl = secureUrl;
+                    
+                    // Simpan tautan URL gambar Cloudinary ke database teks Firebase Realtime kanda
+                    update(ref(db, `inventory_root/items/${originalIndex}`), { imageUrl: secureUrl })
+                        .then(() => {
+                            container.innerHTML = `<img src="${secureUrl}" class="img-preview" onclick="window.open('${secureUrl}', '_blank')">`;
+                        });
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("Gagal mengunggah foto ke Cloudinary! Pastikan Mode Preset Upload di Cloudinary sudah disetel ke 'Unsigned'.");
+                    renderTablePage();
+                });
+            }
+        });
+
+        tableBody.addEventListener('keydown', function(e) {
+            if (e.target.classList.contains('input-fisik')) {
+                const currentRowIndex = parseInt(e.target.getAttribute('data-row'));
+                if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    const nextInput = tableBody.querySelector(`.input-fisik[data-row="${currentRowIndex + 1}"]`);
+                    if (nextInput) {
+                        nextInput.focus();
+                    } else {
+                        const maxPage = Math.ceil(filteredData.length / rowsPerPage);
+                        if (currentPage < maxPage) {
+                            currentPage++;
+                            renderTablePage(true);
+                            window.scrollTo(0, 0);
+                        }
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    const prevInput = tableBody.querySelector(`.input-fisik[data-row="${currentRowIndex - 1}"]`);
+                    if (prevInput) {
+                        prevInput.focus();
+                    } else if (currentPage > 1) {
+                        currentPage--;
+                        renderTablePage();
+                        setTimeout(() => {
+                            const lastInputInPrevPage = tableBody.querySelector(`.input-fisik[data-row="${rowsPerPage - 1}"]`);
+                            if (lastInputInPrevPage) lastInputInPrevPage.focus();
+                        }, 50);
+                    }
+                }
+            }
+        });
+
         tableBody.addEventListener('input', function(e) {
             const row = e.target.closest('tr');
             const originalIndex = row.getAttribute('data-original-index');
+
             if (e.target.classList.contains('input-fisik')) {
-                const value = e.target.value; const fisikValue = value !== "" ? parseFloat(value) : "";
+                const value = e.target.value;
+                const fisikValue = value !== "" ? parseFloat(value) : "";
                 inventoryData[originalIndex].fisik = fisikValue;
+                const kolomSelisih = row.querySelector('.kolom-selisih');
+                
+                if (value === "") {
+                    kolomSelisih.innerText = "0"; kolomSelisih.className = "kolom-selisih diff-zero";
+                } else {
+                    const selisih = fisikValue - inventoryData[originalIndex].sistem;
+                    if (selisih === 0) { kolomSelisih.innerText = "0"; kolomSelisih.className = "kolom-selisih diff-zero"; }
+                    else if (selisih < 0) { kolomSelisih.innerText = selisih; kolomSelisih.className = "kolom-selisih diff-minus"; }
+                    else { kolomSelisih.innerText = "+" + selisih; kolomSelisih.className = "kolom-selisih diff-plus"; }
+                }
+
                 clearTimeout(firebaseTimeouts[originalIndex + '_fisik']);
-                firebaseTimeouts[originalIndex + '_fisik'] = setTimeout(() => { update(ref(db, `inventory_root/items/${originalIndex}`), { fisik: fisikValue }); }, 500); 
+                firebaseTimeouts[originalIndex + '_fisik'] = setTimeout(() => {
+                    update(ref(db, `inventory_root/items/${originalIndex}`), { fisik: fisikValue });
+                }, 500); 
             }
+            
             if (e.target.classList.contains('input-remarks')) {
-                const remarksValue = e.target.value; inventoryData[originalIndex].remarks = remarksValue;
+                const remarksValue = e.target.value;
+                inventoryData[originalIndex].remarks = remarksValue;
+
                 clearTimeout(firebaseTimeouts[originalIndex + '_remarks']);
-                firebaseTimeouts[originalIndex + '_remarks'] = setTimeout(() => { update(ref(db, `inventory_root/items/${originalIndex}`), { remarks: remarksValue }); }, 500);
+                firebaseTimeouts[originalIndex + '_remarks'] = setTimeout(() => {
+                    update(ref(db, `inventory_root/items/${originalIndex}`), { remarks: remarksValue });
+                }, 500);
             }
         });
 
@@ -442,25 +439,180 @@
             const filter = document.getElementById('searchInput').value.toLowerCase();
             filteredData = inventoryData
                 .map((item, index) => ({ ...item, originalIndex: index }))
-                .filter(item => item.partNo.toLowerCase().includes(filter) || item.deskripsi.toLowerCase().includes(filter));
-            currentPage = 1; renderTablePage();
+                .filter(item => {
+                    return item.partNo.toLowerCase().includes(filter) || item.deskripsi.toLowerCase().includes(filter);
+                });
+            currentPage = 1;
+            renderTablePage();
         }
 
         let searchTimeout;
         document.getElementById('searchInput').addEventListener('input', () => { clearTimeout(searchTimeout); searchTimeout = setTimeout(applySearchAndRender, 150); });
         document.getElementById('btnPrev').addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderTablePage(); window.scrollTo(0,0); } });
         document.getElementById('btnNext').addEventListener('click', () => { const maxPage = Math.ceil(filteredData.length / rowsPerPage); if (currentPage < maxPage) { currentPage++; renderTablePage(); window.scrollTo(0,0); } });
-        
-        // Modal & Paste Logika manual dsb...
+
+        function splitIntoColumns(rowText) {
+            return rowText.includes('\t') ? rowText.split('\t') : rowText.split(/\s{2,}/).map(p => p.trim()).filter(p => p !== "");
+        }
+
+        document.getElementById('btnPaste').addEventListener('click', async function() {
+            let text = "";
+            try {
+                text = await navigator.clipboard.readText();
+            } catch (err) {
+                text = prompt("Akses klipboard otomatis diblokir browser.\nSilakan tekan CTRL+V di kotak bawah ini lalu klik OK:");
+            }
+
+            if (!text || !text.trim()) return;
+
+            const adaDataLama = inventoryData.length > 0;
+            const adaFisikLama = inventoryData.some(item => item.fisik !== undefined && item.fisik !== null && item.fisik !== "");
+            const adaRemarksLama = inventoryData.some(item => item.remarks && item.remarks.trim() !== "");
+
+            let perbaruiStokSistem = true;
+            let hapusFisikLama = false;
+            let izinkanTimpaRemarks = true;
+
+            if (adaDataLama) {
+                perbaruiStokSistem = confirm("Ditemukan data lama di cloud.\n\nKlik 'OK' jika ingin MEMPERBARUI STOK SISTEM dengan data Excel.\nKlik 'Batal' jika ingin MEMPERTAHANKAN angka stok sistem yang sekarang.");
+                if (adaFisikLama) {
+                    hapusFisikLama = confirm("Ditemukan DATA FISIK lama di cloud.\n\nKlik 'OK' jika ingin MENGHAPUS/RESET data fisik lama.\nKlik 'Batal' jika ingin MEMPERTAHANKAN data fisik lama Anda.");
+                }
+                if (adaRemarksLama) {
+                    izinkanTimpaRemarks = confirm("Ditemukan CATATAN (Remarks) lama di cloud.\n\nKlik 'OK' jika ingin MENIMPA semua catatan lama.\nKlik 'Batal' jika ingin MEMPERTAHANKAN semua catatan lama Anda.");
+                }
+            }
+
+            const barisData = text.replace(/\r/g, "").split("\n");
+            let dataHasilSinkronisasi = JSON.parse(JSON.stringify(inventoryData));
+
+            barisData.forEach(baris => {
+                const cleanBaris = baris.trim();
+                if (!cleanBaris) return;
+                const kolom = splitIntoColumns(cleanBaris);
+                
+                if (kolom.length >= 2) {
+                    if (kolom[0].toLowerCase().includes("part no") || kolom[1].toLowerCase().includes("desc")) return;
+                    
+                    const targetPartNo = kolom[0].trim();
+                    let cleanStokSistem = 0;
+                    
+                    if (kolom.length >= 8) {
+                        cleanStokSistem = parseFloat(kolom[5].replace(/,/g, '')) || 0;
+                    } else if (kolom.length === 7) {
+                        cleanStokSistem = parseFloat(kolom[6].replace(/,/g, '')) || 0;
+                    } else {
+                        cleanStokSistem = parseFloat(kolom[kolom.length - 1].replace(/,/g, '')) || 0;
+                    }
+
+                    const indexItemLama = dataHasilSinkronisasi.findIndex(i => i.partNo === targetPartNo);
+
+                    if (indexItemLama !== -1) {
+                        dataHasilSinkronisasi[indexItemLama].deskripsi = kolom[1] ? kolom[1].trim() : dataHasilSinkronisasi[indexItemLama].deskripsi;
+                        dataHasilSinkronisasi[indexItemLama].group = kolom[2] ? kolom[2].trim() : dataHasilSinkronisasi[indexItemLama].group;
+                        dataHasilSinkronisasi[indexItemLama].type = kolom[3] ? kolom[3].trim() : dataHasilSinkronisasi[indexItemLama].type;
+                        dataHasilSinkronisasi[indexItemLama].unit = kolom[4] ? kolom[4].trim() : dataHasilSinkronisasi[indexItemLama].unit;
+                        
+                        if (perbaruiStokSistem) dataHasilSinkronisasi[indexItemLama].sistem = cleanStokSistem;
+                        if (hapusFisikLama) dataHasilSinkronisasi[indexItemLama].fisik = (kolom.length >= 8 && kolom[6] !== "" && kolom[6] !== "0") ? parseFloat(kolom[6]) : "";
+                        if (izinkanTimpaRemarks) dataHasilSinkronisasi[indexItemLama].remarks = (kolom.length >= 9 && kolom[8]) ? kolom[8].trim() : "";
+                    } else {
+                        let fisikBaru = ""; let remarksBaru = "";
+                        if (kolom.length >= 8 && kolom[6] !== "" && kolom[6] !== "0") fisikBaru = parseFloat(kolom[6]);
+                        if (kolom.length >= 9 && kolom[8]) remarksBaru = kolom[8].trim();
+
+                        dataHasilSinkronisasi.push({
+                            partNo: targetPartNo,
+                            deskripsi: kolom[1] ? kolom[1].trim() : "-",
+                            group: kolom[2] ? kolom[2].trim() : "-",
+                            type: kolom[3] ? kolom[3].trim() : "-",
+                            unit: kolom[4] ? kolom[4].trim() : "-",
+                            sistem: cleanStokSistem,
+                            fisik: fisikBaru,
+                            remarks: remarksBaru,
+                            imageUrl: "" 
+                        });
+                    }
+                }
+            });
+
+            if (dataHasilSinkronisasi.length > 0) {
+                const opsiTanggal = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute:'2-digit' };
+                const waktuSkrg = new Date().toLocaleDateString('id-ID', opsiTanggal) + " WITA";
+                
+                isInitialLoad = true; 
+                set(ref(db, 'inventory_root'), { items: dataHasilSinkronisasi, lastUpdate: waktuSkrg })
+                    .then(() => alert(`Berhasil sinkronisasi. Total data di Cloud sekarang: ${dataHasilSinkronisasi.length} item.`))
+                    .catch(err => alert("Gagal mengunggah! Periksa Rules Firebase Anda."));
+            } else {
+                alert("Data tidak dikenali. Pastikan Anda telah menyalin baris tabel dari Excel.");
+            }
+        });
+
+        // Fungsi Logika Modal Form Tambah Data Manual
         const modal = document.getElementById("addModal");
         document.getElementById("btnOpenModal").addEventListener("click", () => { modal.style.display = "flex"; document.getElementById("formPartNo").focus(); });
         document.getElementById("btnCloseModal").addEventListener("click", () => { modal.style.display = "none"; });
+
         document.getElementById("btnSaveModal").addEventListener("click", () => {
             const partNo = document.getElementById("formPartNo").value.trim();
             const deskripsi = document.getElementById("formDeskripsi").value.trim();
-            if(!partNo || !deskripsi) return alert("Wajib diisi!");
-            inventoryData.push({ partNo, deskripsi, group:"-", type:"-", unit:"-", sistem:0, fisik:"", remarks:"", imageUrl:"" });
-            set(ref(db, 'inventory_root'), { items: inventoryData, lastUpdate: new Date().toLocaleString() }).then(() => { modal.style.display="none"; applySearchAndRender(); });
+            const group = document.getElementById("formGroup").value.trim();
+            const type = document.getElementById("formType").value.trim();
+            const unit = document.getElementById("formUnit").value.trim();
+            const sistem = parseFloat(document.getElementById("formSistem").value) || 0;
+
+            if (!partNo || !deskripsi) {
+                alert("Kolom Part No dan Deskripsi Barang wajib diisi!");
+                return;
+            }
+
+            const itemBaru = { partNo, deskripsi, group, type, unit, sistem, fisik: "", remarks: "", imageUrl: "" };
+            inventoryData.push(itemBaru);
+
+            const opsiTanggal = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute:'2-digit' };
+            const waktuSkrg = new Date().toLocaleDateString('id-ID', opsiTanggal) + " WITA";
+
+            set(ref(db, 'inventory_root'), { items: inventoryData, lastUpdate: waktuSkrg })
+                .then(() => {
+                    modal.style.display = "none";
+                    document.getElementById("formPartNo").value = "";
+                    document.getElementById("formDeskripsi").value = "";
+                    document.getElementById("formGroup").value = "";
+                    document.getElementById("formUnit").value = "";
+                    document.getElementById("formSistem").value = "0";
+                    
+                    applySearchAndRender();
+                    alert("Item baru berhasil ditambahkan secara permanen!");
+                });
+        });
+
+        document.getElementById('btnCopy').addEventListener('click', function() {
+            if (inventoryData.length === 0) { alert("Tidak ada data."); return; }
+            let tsvContent = "Part No.\tDeskripsi\tGroup Name\tItem Type\tUnit\tStok Sistem\tFisik\tSelisih\tRemarks\n";
+            inventoryData.forEach(item => {
+                const fisikVal = (item.fisik !== undefined && item.fisik !== null && item.fisik !== "") ? item.fisik : "0";
+                const remarksTxt = item.remarks ? item.remarks : "";
+                let selisihVal = "0";
+                if (item.fisik !== undefined && item.fisik !== null && item.fisik !== "") {
+                    const calc = item.fisik - item.sistem;
+                    selisihVal = calc > 0 ? "+" + calc : calc;
+                }
+                tsvContent += `${item.partNo}\t${item.deskripsi}\t${item.group}\t${item.type}\t${item.unit}\t${item.sistem}\t${fisikVal}\t${selisihVal}\t${remarksTxt}\n`;
+            });
+            navigator.clipboard.writeText(tsvContent).then(() => {
+                const btn = document.getElementById('btnCopy'); btn.innerText = "✅ Berhasil Disalin!";
+                setTimeout(() => { btn.innerText = "📋 Salin Hasil Opname"; }, 2000);
+            });
+        });
+
+        document.getElementById('btnReset').addEventListener('click', function() {
+            if (confirm("Apakah Anda yakin ingin mengosongkan cloud? Data lama akan terhapus selamanya.")) {
+                isInitialLoad = true;
+                set(ref(db, 'inventory_root'), null)
+                    .then(() => alert("Cloud berhasil dikosongkan!"))
+                    .catch(err => alert("Gagal menghapus cloud!"));
+            }
         });
     </script>
 </body>
