@@ -56,7 +56,6 @@
         .diff-plus { color: #059669; background-color: #ecfdf5; border-radius: 4px; padding: 2px 6px; }
         .diff-minus { color: #dc2626; background-color: #fef2f2; border-radius: 4px; padding: 2px 6px; }
         
-        /* Kontainer pratinjau gambar + tombol hapus */
         .wrapper-foto { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 60px; }
         .img-preview {
             width: 45px; height: 45px; border-radius: 6px; object-fit: cover;
@@ -186,12 +185,12 @@
         const db = getDatabase(app);
 
         // =========================================================================
-        // PENGATURAN AKUN CLOUDINARY KANDA (Wajib Diisi):
+        // PENGATURAN AKUN CLOUDINARY KANDA:
         // =========================================================================
         const CLOUDINARY_CLOUD_NAME = "dvrpyvkyc"; 
         const CLOUDINARY_UPLOAD_PRESET = "preset";
-        const CLOUDINARY_API_KEY = "279871863653533";       // Diperlukan untuk validasi hapus
-        const CLOUDINARY_API_SECRET = "QOdzzQlQKqE7_52nq-qUAF6GDD0"; // Diperlukan untuk generate signature hapus
+        const CLOUDINARY_API_KEY = "279871863653533";       
+        const CLOUDINARY_API_SECRET = "QOdzzQlQKqE7_52nq-qUAF6GDD0"; 
 
         let inventoryData = [];
         let filteredData = [];
@@ -253,7 +252,6 @@
 
                 let imageColumnHtml = "";
                 if (item.imageUrl) {
-                    // Dilengkapi dengan tombol hapus foto kanda
                     imageColumnHtml = `
                         <div class="wrapper-foto">
                             <img src="${item.imageUrl}" class="img-preview" onclick="window.open('${item.imageUrl}', '_blank')">
@@ -289,7 +287,7 @@
         }
 
         // =========================================================================
-        // 1. PROSES UPLOAD FOTO KE CLOUDINARY
+        // 1. PROSES JEPRET KAMERA & UPLOAD CLOUDINARY
         // =========================================================================
         tableBody.addEventListener('change', function(e) {
             if (e.target.classList.contains('file-input')) {
@@ -297,18 +295,13 @@
                 const file = e.target.files[0];
                 if (!file) return;
 
-                if (CLOUDINARY_CLOUD_NAME === "Ubah_Nama_Cloud_Cloudinary_Anda") {
-                    alert("Kanda belum mengatur akun Cloudinary di dalam kode script!");
-                    return;
-                }
-
                 const container = document.getElementById(`img_container_${originalIndex}`);
                 container.innerHTML = `<span style="font-size:11px; color:var(--primary); font-weight:600;">⚡ Uploading...</span>`;
 
                 const formData = new FormData();
                 formData.append("file", file);
                 formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-                // Agar public_id file rapi (contoh: opname_M3050099)
+                
                 const customPublicId = `opname_${inventoryData[originalIndex].partNo}`;
                 formData.append("public_id", customPublicId);
 
@@ -339,23 +332,47 @@
         });
 
         // =========================================================================
-        // 2. PROSES HAPUS FOTO DARI CLOUDINARY & FIREBASE
+        // 2. PARSER KUNCI: STRIP URL UNTUK MENDAPATKAN PUBLIC_ID + NAMA FOLDER ASLI
+        // =========================================================================
+        function getCloudinaryPublicId(url) {
+            try {
+                const parts = url.split('/upload/');
+                if (parts.length > 1) {
+                    // Buang nomor versi opsional (v171xxxxx/) dari URL Cloudinary
+                    const idWithExtension = parts[1].replace(/^v\d+\//, ''); 
+                    // Mengambil path utuh (folder/nama_file) sebelum ekstensi format (.jpg)
+                    return idWithExtension.substring(0, idWithExtension.lastIndexOf('.'));
+                }
+                return null;
+            } catch (err) {
+                return null;
+            }
+        }
+
+        // =========================================================================
+        // 3. SELESAI: FITUR HAPUS FOTO SECARA AGRESIF & AMAN
         // =========================================================================
         tableBody.addEventListener('click', function(e) {
             if (e.target.classList.contains('btn-hapus-foto')) {
                 const originalIndex = e.target.getAttribute('data-index');
                 const item = inventoryData[originalIndex];
 
+                if (!item.imageUrl) return;
                 if (!confirm(`Hapus foto untuk produk "${item.deskripsi}"?`)) return;
 
                 const container = document.getElementById(`img_container_${originalIndex}`);
                 container.innerHTML = `<span style="font-size:11px; color:var(--danger); font-weight:600;">🗑️ Menghapus...</span>`;
 
-                // Ekstrak Public ID Cloudinary (misal dari URL didapat: opname_M3050099)
-                const publicId = `opname_${item.partNo}`;
-                const timestamp = Math.round(new Date().getTime() / 1000);
+                // Mengekstrak ID dinamis lengkap dengan folder-nya (misal: opname-risra/opname_M3050001)
+                const publicId = getCloudinaryPublicId(item.imageUrl);
                 
-                // Membuat tanda tangan keamanan SHA-1 untuk otorisasi penghapusan file kanda
+                if (!publicId) {
+                    alert("Gagal membaca ID foto dari URL Cloudinary!");
+                    renderTablePage();
+                    return;
+                }
+
+                const timestamp = Math.round(new Date().getTime() / 1000);
                 const signatureString = `public_id=${publicId}&timestamp=${timestamp}${CLOUDINARY_API_SECRET}`;
                 const signature = CryptoJS.SHA1(signatureString).toString();
 
@@ -365,15 +382,14 @@
                 formData.append("api_key", CLOUDINARY_API_KEY);
                 formData.append("signature", signature);
 
-                // Tembak API Destroy Cloudinary
                 fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/destroy`, {
                     method: "POST",
                     body: formData
                 })
-                .then(res => res.json())
+                .then(res => { if (!res.ok) throw new Error(); return res.json(); })
                 .then(data => {
+                    // Jika sukses terhapus atau filenya memang sudah tidak ada di Cloudinary
                     if (data.result === "ok" || data.result === "not_found") {
-                        // Hapus tautan di database lokal & Firebase
                         inventoryData[originalIndex].imageUrl = "";
                         update(ref(db, `inventory_root/items/${originalIndex}`), { imageUrl: "" })
                             .then(() => {
@@ -387,13 +403,12 @@
                     }
                 })
                 .catch(() => {
-                    alert("Gagal menghapus gambar di Cloudinary! Periksa API Key / Secret Anda.");
+                    alert("Gagal menghapus gambar di Cloudinary! Periksa kembali apakah kanda sudah mencentang izin hapus Unsigned di dasbor.");
                     renderTablePage();
                 });
             }
         });
 
-        // Sisa fungsi bawaan aplikasi stock opname kanda tetap dipertahankan utuh...
         function refreshActiveDataOnly() {
             const rows = tableBody.querySelectorAll('tr');
             rows.forEach(row => {
@@ -423,8 +438,7 @@
         }
 
         tableBody.addEventListener('input', function(e) {
-            const row = e.target.closest('tr');
-            const originalIndex = row.getAttribute('data-original-index');
+            const row = e.target.closest('tr'); const originalIndex = row.getAttribute('data-original-index');
             if (e.target.classList.contains('input-fisik')) {
                 const value = e.target.value; const fisikValue = value !== "" ? parseFloat(value) : "";
                 inventoryData[originalIndex].fisik = fisikValue;
@@ -451,7 +465,6 @@
         document.getElementById('btnPrev').addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderTablePage(); window.scrollTo(0,0); } });
         document.getElementById('btnNext').addEventListener('click', () => { const maxPage = Math.ceil(filteredData.length / rowsPerPage); if (currentPage < maxPage) { currentPage++; renderTablePage(); window.scrollTo(0,0); } });
         
-        // Modal & Paste Logika manual dsb...
         const modal = document.getElementById("addModal");
         document.getElementById("btnOpenModal").addEventListener("click", () => { modal.style.display = "flex"; document.getElementById("formPartNo").focus(); });
         document.getElementById("btnCloseModal").addEventListener("click", () => { modal.style.display = "none"; });
