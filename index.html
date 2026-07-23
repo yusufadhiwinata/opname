@@ -3,478 +3,310 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Stock Opname - Rinra</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    <style>
-        :root {
-            --primary: #2563eb;
-            --primary-hover: #1d4ed8;
-            --success: #10b981;
-            --success-hover: #059669;
-            --danger: #ef4444;
-            --danger-hover: #dc2626;
-            --background: #f8fafc;
-            --surface: #ffffff;
-            --text-main: #1e293b;
-            --text-muted: #64748b;
-            --border: #e2e8f0;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: var(--background); color: var(--text-main); padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .container { width: 100%; max-width: 1400px; background: var(--surface); padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
-        header { margin-bottom: 24px; border-bottom: 2px solid var(--border); padding-bottom: 16px; }
-        h1 { font-size: 24px; color: #0f172a; margin-bottom: 4px; }
-        .update-info { font-size: 13px; color: var(--text-muted); }
-        .toolbar { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; align-items: center; justify-content: space-between; }
-        .search-box { flex: 1; min-width: 280px; }
-        .search-box input { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; outline: none; }
-        .search-box input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 243, 0.1); }
-        .button-group { display: flex; flex-wrap: wrap; gap: 8px; }
-        button, .btn-link { padding: 10px 16px; border: none; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; text-decoration: none; }
-        button:active { transform: scale(0.98); }
-        .btn-primary { background-color: var(--primary); color: white; }
-        .btn-primary:hover { background-color: var(--primary-hover); }
-        .btn-success { background-color: var(--success); color: white; }
-        .btn-success:hover { background-color: var(--success-hover); }
-        .btn-danger { background-color: var(--danger); color: white; }
-        .btn-danger:hover { background-color: var(--danger-hover); }
-        .btn-amber { background-color: #f59e0b; color: white; }
-        .btn-amber:hover { background-color: #d97706; }
-        
-        .table-container { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
-        th { background-color: #f1f5f9; color: #475569; font-weight: 600; padding: 12px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-        td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-        tr:hover { background-color: #f8fafc; }
-        
-        .input-fisik { width: 80px; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px; font-weight: 600; text-align: center; outline: none; }
-        .input-remarks { width: 180px; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; outline: none; }
-
-        .kolom-selisih { font-weight: 600; text-align: center; font-size: 14px; }
-        .diff-zero { color: var(--text-muted); }
-        .diff-plus { color: #059669; background-color: #ecfdf5; border-radius: 4px; padding: 2px 6px; }
-        .diff-minus { color: #dc2626; background-color: #fef2f2; border-radius: 4px; padding: 2px 6px; }
-        
-        .wrapper-foto { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 60px; }
-        .img-preview {
-            width: 45px; height: 45px; border-radius: 6px; object-fit: cover;
-            border: 1px solid var(--border); cursor: pointer; transition: transform 0.2s;
-        }
-        .img-preview:hover { transform: scale(1.1); }
-        .btn-hapus-foto {
-            background: none; border: none; color: var(--danger); font-size: 10px; 
-            font-weight: bold; cursor: pointer; padding: 2px 6px; border-radius: 4px;
-        }
-        .btn-hapus-foto:hover { background-color: #fef2f2; }
-        
-        .upload-label {
-            padding: 5px 10px; background-color: #f1f5f9; border: 1px solid var(--border);
-            border-radius: 6px; font-size: 12px; cursor: pointer; color: var(--text-main); font-weight: 500;
-            display: inline-flex; align-items: center; gap: 4px;
-        }
-        .upload-label:hover { background-color: #e2e8f0; }
-
-        .btn-link { padding: 4px 8px; font-size: 12px; background-color: #f1f5f9; color: var(--primary); border: 1px solid var(--border); }
-        .pagination { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
-        .page-info { font-size: 14px; color: var(--text-muted); }
-        .page-buttons { display: flex; gap: 8px; }
-        .btn-page { padding: 6px 12px; background-color: #ffffff; border: 1px solid var(--border); color: var(--text-main); }
-        .btn-page:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .modal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.4); justify-content: center; align-items: center; z-index: 9999;
-        }
-        .modal-content {
-            background: white; padding: 24px; border-radius: 12px; width: 100%; max-width: 450px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
-        }
-        .modal-content h3 { margin-bottom: 16px; font-size: 18px; color: #0f172a; }
-        .form-group { margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px; }
-        .form-group label { font-size: 13px; font-weight: 600; color: #475569; }
-        .form-group input { padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; outline: none; }
-        .modal-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
-    </style>
+    <title>Web Scheduler & Durasi Belajar Fullstack</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans">
 
-    <div class="container">
-        <header>
-            <h1>Sistem Stock Opname Rinra</h1>
-            <div class="update-info" id="updateDate">Menghubungkan ke cloud...</div>
+    <!-- Container Utama -->
+    <div class="max-w-4xl mx-auto px-4 py-8">
+        
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold tracking-tight text-indigo-400"><i class="fa-solid fa-graduation-cap mr-2"></i> Jadwal & Timer Switch Career</h1>
+            <p class="text-slate-400 mt-2">Atur jam mulai dan durasi belajar. Sistem pengingat siap menemani proses transisi karier Anda.</p>
         </header>
 
-        <div class="toolbar">
-            <div class="search-box">
-                <input type="text" id="searchInput" placeholder="Cari berdasarkan Part No atau Deskripsi Barang...">
-            </div>
-            <div class="button-group">
-                <button class="btn-amber" id="btnOpenModal">➕ Tambah Data Manual</button>
-                <button class="btn-primary" id="btnPaste">📥 Paste Data Excel</button>
-                <button class="btn-success" id="btnCopy">📋 Salin Hasil Opname</button>
-                <button class="btn-danger" id="btnReset">🗑️ Kosongkan Cloud</button>
-            </div>
+        <!-- Tracker Timer Aktif -->
+        <div id="active-timer-card" class="bg-indigo-950 border-2 border-indigo-500 rounded-xl p-5 mb-6 hidden text-center shadow-lg shadow-indigo-500/10">
+            <h3 class="text-sm font-semibold tracking-wider uppercase text-indigo-300 mb-1">Sesi Belajar Sedang Berlangsung</h3>
+            <p id="timer-topic" class="text-base font-medium text-white mb-3">Topik: -</p>
+            <div id="timer-countdown" class="text-4xl font-mono font-bold text-emerald-400 my-2">00:00:00</div>
+            <p class="text-xs text-slate-400">Tetap fokus! Selesaikan modul latihan Anda.</p>
         </div>
 
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Part No.</th>
-                        <th style="text-align: center;">Foto Item</th>
-                        <th>Deskripsi Barang</th>
-                        <th>Group Name</th>
-                        <th>Item Type</th>
-                        <th>Unit</th>
-                        <th style="text-align: center;">Stok Sistem</th>
-                        <th style="text-align: center;">Fisik</th>
-                        <th style="text-align: center;">Selisih</th>
-                        <th>Remarks / Keterangan</th>
-                        <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody">
-                    <tr>
-                        <td colspan="11" style="text-align:center; padding:30px; color:#94a3b8;">Menghubungkan ke server cloud...</td>
-                    </tr>
-                </tbody>
-            </table>
+        <!-- Panel Status & Kontrol Suara -->
+        <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div id="status-icon" class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
+                <span id="current-status" class="text-sm font-medium">Sistem Alarm & Timer Aktif</span>
+            </div>
+            <button onclick="testAlarm()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded-lg transition font-medium cursor-pointer shadow">
+                <i class="fa-solid fa-bell mr-1"></i> Tes Suara Alarm
+            </button>
         </div>
 
-        <div class="pagination">
-            <div class="page-info" id="pageInfo">Menampilkan 0-0 dari 0 item</div>
-            <div class="page-buttons">
-                <button class="btn-page" id="btnPrev" disabled>◀ Sebelumnya</button>
-                <button class="btn-page" id="btnNext" disabled>Berikutnya ▶</button>
+        <!-- Grid Layout -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <!-- Kolom Kiri: Form Tambah Jadwal -->
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg md:col-span-1 h-fit">
+                <h2 class="text-lg font-semibold mb-4 text-indigo-300"><i class="fa-solid fa-plus-circle mr-2"></i>Tambah Jadwal</h2>
+                <form id="schedule-form" onsubmit="addSchedule(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Topik / Materi</label>
+                        <input type="text" id="title" required placeholder="Cth: Belajar Laravel & API" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Hari</label>
+                        <select id="day" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                            <option value="Senin">Senin</option>
+                            <option value="Selasa">Selasa</option>
+                            <option value="Rabu">Rabu</option>
+                            <option value="Kamis">Kamis</option>
+                            <option value="Jumat">Jumat</option>
+                            <option value="Sabtu">Sabtu</option>
+                            <option value="Minggu">Minggu</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Jam Mulai</label>
+                            <input type="time" id="time" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Durasi Kerja</label>
+                            <select id="duration" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                                <option value="1">1 Menit (Untuk Tes Cepat)</option>
+                                <option value="30">30 Menit</option>
+                                <option value="60">1 Jam</option>
+                                <option value="90">1.5 Jam</option>
+                                <option value="120" selected>2 Jam</option>
+                                <option value="180">3 Jam</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 rounded-lg transition text-sm cursor-pointer shadow">
+                        Simpan Jadwal
+                    </button>
+                </form>
             </div>
+
+            <!-- Kolom Kanan: Daftar Jadwal -->
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg md:col-span-2">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold text-indigo-300"><i class="fa-solid fa-list-check mr-2"></i>Daftar Jadwal Belajar</h2>
+                    <span id="total-schedule" class="text-xs bg-slate-700 px-2.5 py-1 rounded-full text-slate-300">0 Jadwal</span>
+                </div>
+                
+                <div id="schedule-list" class="space-y-3 max-h-[440px] overflow-y-auto pr-1">
+                    <!-- Dinamis -->
+                </div>
+            </div>
+
         </div>
     </div>
 
-    <div class="modal" id="addModal">
-        <div class="modal-content">
-            <h3>Tambah Item Inventaris Baru</h3>
-            <div class="form-group"><label>Part No.</label><input type="text" id="formPartNo" placeholder="Contoh: M3050099"></div>
-            <div class="form-group"><label>Deskripsi Barang</label><input type="text" id="formDeskripsi" placeholder="Contoh: Kertas HVS A4"></div>
-            <div class="form-group"><label>Group Name</label><input type="text" id="formGroup" placeholder="Contoh: Printing & Stationary"></div>
-            <div class="form-group"><label>Item Type</label><input type="text" id="formType" value="Material"></div>
-            <div class="form-group"><label>Unit</label><input type="text" id="formUnit" placeholder="Contoh: Pcs / Pack / Rim"></div>
-            <div class="form-group"><label>Stok Sistem (On Hand)</label><input type="number" id="formSistem" value="0"></div>
-            <div class="modal-buttons">
-                <button class="btn btn-danger" style="padding:8px 14px;" id="btnCloseModal">Batal</button>
-                <button class="btn btn-success" style="padding:8px 14px;" id="btnSaveModal">Simpan</button>
+    <!-- Modal Alarm Berdering -->
+    <div id="alarm-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-slate-800 border border-indigo-500 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl animate-bounce">
+            <div class="w-16 h-16 bg-indigo-600/20 text-indigo-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+                <i class="fa-solid fa-bell-ring animate-spin"></i>
             </div>
+            <h3 id="modal-title" class="text-xl font-bold text-white mb-2">Waktunya Belajar!</h3>
+            <p id="alarm-text" class="text-sm text-slate-300 mb-6">Materi: Belajar Fullstack</p>
+            <button id="modal-action-btn" onclick="startStudySession()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 rounded-xl transition cursor-pointer shadow">
+                Mulai Belajar & Aktifkan Timer
+            </button>
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    <script>
+        let schedules = JSON.parse(localStorage.getItem('study_schedules')) || [
+            { id: 1, title: 'Menonton Modul Frontend (React)', day: getTodayName(), time: '20:00', duration: 120 }
+        ];
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBCmlVCm69mAJP0m8DoojN1uus9XMuwgEk",
-            authDomain: "opname-rinra.firebaseapp.com",
-            databaseURL: "https://opname-rinra-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "opname-rinra",
-            storageBucket: "opname-rinra.firebasestorage.app",
-            messagingSenderId: "454143552303",
-            appId: "1:454143552303:web:7055d7625c9aaaebf50fda",
-            measurementId: "G-GFFZJLLWMW"
-        };
+        let audioCtx = null;
+        let alarmInterval = null;
+        let sessionTimer = null;
+        let activeSession = null;
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-
-        // =========================================================================
-        // PENGATURAN AKUN CLOUDINARY KANDA:
-        // =========================================================================
-        const CLOUDINARY_CLOUD_NAME = "dvrpyvkyc"; 
-        const CLOUDINARY_UPLOAD_PRESET = "preset";
-        const CLOUDINARY_API_KEY = "279871863653533";       
-        const CLOUDINARY_API_SECRET = "QOdzzQlQKqE7_52nq-qUAF6GDD0"; 
-
-        let inventoryData = [];
-        let filteredData = [];
-        let firebaseTimeouts = {}; 
-        let currentPage = 1;
-        const rowsPerPage = 50; 
-        let isInitialLoad = true; 
-
-        const dbRef = ref(db, 'inventory_root');
-        onValue(dbRef, (snapshot) => {
-            const dataRaw = snapshot.val();
-            if (dataRaw && dataRaw.items) {
-                inventoryData = dataRaw.items;
-                if (isInitialLoad) {
-                    applySearchAndRender();
-                    isInitialLoad = false;
-                } else {
-                    refreshActiveDataOnly();
-                }
-                if (dataRaw.lastUpdate) {
-                    document.getElementById('updateDate').innerText = `Terakhir diperbarui: ${dataRaw.lastUpdate}`;
-                }
-            } else {
-                inventoryData = []; filteredData = [];
-                document.getElementById('tableBody').innerHTML = `<tr><td colspan="11" style="text-align:center; padding:30px; color:#94a3b8;">Cloud kosong. Silakan paste data teks inventaris Anda.</td></tr>`;
-                document.getElementById('updateDate').innerText = "Terakhir diperbarui: Belum ada data di cloud";
-                updatePaginationControls();
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSchedules();
+            setInterval(checkAlarms, 1000);
+            if (Notification.permission !== "granted") {
+                Notification.requestPermission();
             }
         });
 
-        function renderTablePage(shouldFocusFirstRow = false) {
-            const tbody = document.getElementById('tableBody');
-            if (filteredData.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:20px; color:#94a3b8;">Data tidak ditemukan</td></tr>`;
-                document.getElementById('pageInfo').innerText = "Menampilkan 0 dari 0 item";
+        function getTodayName() {
+            const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            return days[new Date().getDay()];
+        }
+
+        // Inisialisasi Audio Context agar tidak diblokir browser
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playBeep(frequency = 880) {
+            initAudio();
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.4);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.4);
+            } catch (e) {
+                console.error("Audio error:", e);
+            }
+        }
+
+        function testAlarm() {
+            initAudio();
+            playBeep(880);
+            setTimeout(() => playBeep(880), 300);
+            setTimeout(() => playBeep(1100), 600);
+            alert("Jika Anda mendengar bunyi bip 3x barusan, berarti sistem suara alarm browser Anda sudah aktif dan normal!");
+        }
+
+        function addSchedule(e) {
+            e.preventDefault();
+            const title = document.getElementById('title').value;
+            const day = document.getElementById('day').value;
+            const time = document.getElementById('time').value;
+            const duration = parseInt(document.getElementById('duration').value);
+
+            const newSchedule = { id: Date.now(), title, day, time, duration };
+            schedules.push(newSchedule);
+            saveAndRender();
+            document.getElementById('schedule-form').reset();
+        }
+
+        function deleteSchedule(id) {
+            schedules = schedules.filter(item => item.id !== id);
+            saveAndRender();
+        }
+
+        function saveAndRender() {
+            localStorage.setItem('study_schedules', JSON.stringify(schedules));
+            renderSchedules();
+        }
+
+        function renderSchedules() {
+            const listContainer = document.getElementById('schedule-list');
+            document.getElementById('total-schedule').innerText = `${schedules.length} Jadwal`;
+
+            if (schedules.length === 0) {
+                listContainer.innerHTML = `<p class="text-slate-500 text-sm text-center py-8">Belum ada jadwal. Silakan tambahkan jadwal belajar Anda!</p>`;
                 return;
             }
 
-            const start = (currentPage - 1) * rowsPerPage;
-            const end = start + rowsPerPage;
-            const pageItems = filteredData.slice(start, end);
-            const fragment = document.createDocumentFragment();
+            listContainer.innerHTML = schedules.map(item => `
+                <div class="bg-slate-900/60 border border-slate-700/60 rounded-xl p-4 flex justify-between items-center transition hover:border-indigo-500/50">
+                    <div>
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 mr-2">${item.day}</span>
+                        <span class="text-xs font-semibold text-slate-400 mr-2"><i class="fa-regular fa-clock mr-1"></i>${item.time}</span>
+                        <span class="text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md"><i class="fa-solid fa-hourglass-half mr-1"></i>${item.duration >= 60 ? (item.duration/60) + ' Jam' : item.duration + ' Mnt'}</span>
+                        <h4 class="text-white font-medium mt-1 text-sm sm:text-base">${item.title}</h4>
+                    </div>
+                    <button onclick="deleteSchedule(${item.id})" class="text-slate-500 hover:text-red-400 p-2 transition cursor-pointer">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
 
-            pageItems.forEach((item, index) => {
-                const tr = document.createElement('tr');
-                tr.setAttribute('data-original-index', item.originalIndex);
-                tr.setAttribute('data-page-row-index', index);
+        function checkAlarms() {
+            const now = new Date();
+            const currentDay = getTodayName();
+            const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-                let diffClass = "diff-zero"; let diffText = "0";
-                if (item.fisik !== undefined && item.fisik !== null && item.fisik !== "") {
-                    const selisih = item.fisik - item.sistem;
-                    if (selisih < 0) { diffClass = "diff-minus"; diffText = selisih; }
-                    else if (selisih > 0) { diffClass = "diff-plus"; diffText = "+" + selisih; }
+            schedules.forEach(item => {
+                if (item.day === currentDay && item.time === currentTimeStr && now.getSeconds() === 0) {
+                    triggerStartAlarm(item);
                 }
-
-                const staticUrl = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(item.deskripsi)}`;
-                const fisikVal = (item.fisik !== undefined && item.fisik !== null) ? item.fisik : "";
-                const remarksVal = item.remarks ? item.remarks : "";
-
-                let imageColumnHtml = "";
-                if (item.imageUrl) {
-                    imageColumnHtml = `
-                        <div class="wrapper-foto">
-                            <img src="${item.imageUrl}" class="img-preview" onclick="window.open('${item.imageUrl}', '_blank')">
-                            <button class="btn-hapus-foto" data-index="${item.originalIndex}">❌ Hapus</button>
-                        </div>
-                    `;
-                } else {
-                    imageColumnHtml = `
-                        <label class="upload-label" for="file_${item.originalIndex}">📷 Kamera</label>
-                        <input type="file" id="file_${item.originalIndex}" class="file-input" data-index="${item.originalIndex}" accept="image/*" capture="environment" style="display:none;">
-                    `;
-                }
-
-                tr.innerHTML = `
-                    <td>${item.partNo}</td>
-                    <td style="text-align:center;" id="img_container_${item.originalIndex}">${imageColumnHtml}</td>
-                    <td>${item.deskripsi}</td>
-                    <td><span class="badge">${item.group}</span></td>
-                    <td>${item.type}</td>
-                    <td>${item.unit}</td>
-                    <td class="stok-sistem">${item.sistem}</td>
-                    <td><input type="number" class="input-fisik" value="${fisikVal}" placeholder="0" data-row="${index}"></td>
-                    <td class="kolom-selisih ${diffClass}">${diffText}</td>
-                    <td><input type="text" class="input-remarks" value="${remarksVal}" placeholder="Tambah catatan..." data-row="${index}"></td>
-                    <td><a class="btn-link" href="${staticUrl}" target="_blank">Google</a></td>
-                `;
-                fragment.appendChild(tr);
             });
+        }
+
+        function triggerStartAlarm(scheduleItem) {
+            activeSession = scheduleItem; 
             
-            tbody.innerHTML = "";
-            tbody.appendChild(fragment);
-            updatePaginationControls();
+            document.getElementById('modal-title').innerText = "Waktunya Belajar! 🚀";
+            document.getElementById('alarm-text').innerText = `Materi: ${scheduleItem.title}\nTarget Durasi: ${scheduleItem.duration} menit`;
+            
+            const btn = document.getElementById('modal-action-btn');
+            btn.innerText = "Mulai Belajar & Aktifkan Timer";
+            btn.setAttribute("onclick", "startStudySession()");
+            
+            document.getElementById('alarm-modal').classList.remove('hidden');
+
+            if (!alarmInterval) {
+                playBeep(880);
+                alarmInterval = setInterval(() => playBeep(880), 1000);
+            }
         }
 
-        // =========================================================================
-        // 1. PROSES JEPRET KAMERA & UPLOAD CLOUDINARY
-        // =========================================================================
-        tableBody.addEventListener('change', function(e) {
-            if (e.target.classList.contains('file-input')) {
-                const originalIndex = e.target.getAttribute('data-index');
-                const file = e.target.files[0];
-                if (!file) return;
-
-                const container = document.getElementById(`img_container_${originalIndex}`);
-                container.innerHTML = `<span style="font-size:11px; color:var(--primary); font-weight:600;">⚡ Uploading...</span>`;
-
-                const formData = new FormData();
-                formData.append("file", file);
-                formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-                
-                const customPublicId = `opname_${inventoryData[originalIndex].partNo}`;
-                formData.append("public_id", customPublicId);
-
-                fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
-                    method: "POST",
-                    body: formData
-                })
-                .then(res => { if (!res.ok) throw new Error(); return res.json(); })
-                .then(data => {
-                    const secureUrl = data.secure_url;
-                    inventoryData[originalIndex].imageUrl = secureUrl;
-                    
-                    update(ref(db, `inventory_root/items/${originalIndex}`), { imageUrl: secureUrl })
-                        .then(() => {
-                            container.innerHTML = `
-                                <div class="wrapper-foto">
-                                    <img src="${secureUrl}" class="img-preview" onclick="window.open('${secureUrl}', '_blank')">
-                                    <button class="btn-hapus-foto" data-index="${originalIndex}">❌ Hapus</button>
-                                </div>
-                            `;
-                        });
-                })
-                .catch(() => {
-                    alert("Gagal mengunggah foto!");
-                    renderTablePage();
-                });
+        function startStudySession() {
+            initAudio();
+            if (alarmInterval) {
+                clearInterval(alarmInterval);
+                alarmInterval = null;
             }
-        });
+            document.getElementById('alarm-modal').classList.add('hidden');
 
-        // =========================================================================
-        // 2. PARSER KUNCI: STRIP URL UNTUK MENDAPATKAN PUBLIC_ID + NAMA FOLDER ASLI
-        // =========================================================================
-        function getCloudinaryPublicId(url) {
-            try {
-                const parts = url.split('/upload/');
-                if (parts.length > 1) {
-                    // Buang nomor versi opsional (v171xxxxx/) dari URL Cloudinary
-                    const idWithExtension = parts[1].replace(/^v\d+\//, ''); 
-                    // Mengambil path utuh (folder/nama_file) sebelum ekstensi format (.jpg)
-                    return idWithExtension.substring(0, idWithExtension.lastIndexOf('.'));
+            if (!activeSession) return;
+
+            const timerCard = document.getElementById('active-timer-card');
+            document.getElementById('timer-topic').innerText = `Topik: ${activeSession.title}`;
+            timerCard.classList.remove('hidden');
+
+            let totalSeconds = activeSession.duration * 60;
+
+            if (sessionTimer) clearInterval(sessionTimer);
+
+            sessionTimer = setInterval(() => {
+                totalSeconds--;
+
+                if (totalSeconds <= 0) {
+                    clearInterval(sessionTimer);
+                    timerCard.classList.add('hidden');
+                    triggerEndAlarm(activeSession.title);
+                } else {
+                    const hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+                    const mins = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+                    const secs = String(totalSeconds % 60).padStart(2, '0');
+                    document.getElementById('timer-countdown').innerText = `${hrs}:${mins}:${secs}`;
                 }
-                return null;
-            } catch (err) {
-                return null;
+            }, 1000);
+        }
+
+        function triggerEndAlarm(title) {
+            document.getElementById('modal-title').innerText = "Sesi Selesai! Waktunya Istirahat ☕";
+            document.getElementById('alarm-text').innerText = `Target durasi untuk "${title}" telah tercapai!`;
+            
+            const btn = document.getElementById('modal-action-btn');
+            btn.innerText = "Tutup & Istirahat";
+            btn.setAttribute("onclick", "stopEndAlarm()");
+
+            document.getElementById('alarm-modal').classList.remove('hidden');
+
+            if (!alarmInterval) {
+                playBeep(554);
+                alarmInterval = setInterval(() => playBeep(554), 1200);
             }
         }
 
-        // =========================================================================
-        // 3. SELESAI: FITUR HAPUS FOTO SECARA AGRESIF & AMAN
-        // =========================================================================
-        tableBody.addEventListener('click', function(e) {
-            if (e.target.classList.contains('btn-hapus-foto')) {
-                const originalIndex = e.target.getAttribute('data-index');
-                const item = inventoryData[originalIndex];
-
-                if (!item.imageUrl) return;
-                if (!confirm(`Hapus foto untuk produk "${item.deskripsi}"?`)) return;
-
-                const container = document.getElementById(`img_container_${originalIndex}`);
-                container.innerHTML = `<span style="font-size:11px; color:var(--danger); font-weight:600;">🗑️ Menghapus...</span>`;
-
-                // Mengekstrak ID dinamis lengkap dengan folder-nya (misal: opname-risra/opname_M3050001)
-                const publicId = getCloudinaryPublicId(item.imageUrl);
-                
-                if (!publicId) {
-                    alert("Gagal membaca ID foto dari URL Cloudinary!");
-                    renderTablePage();
-                    return;
-                }
-
-                const timestamp = Math.round(new Date().getTime() / 1000);
-                const signatureString = `public_id=${publicId}&timestamp=${timestamp}${CLOUDINARY_API_SECRET}`;
-                const signature = CryptoJS.SHA1(signatureString).toString();
-
-                const formData = new FormData();
-                formData.append("public_id", publicId);
-                formData.append("timestamp", timestamp);
-                formData.append("api_key", CLOUDINARY_API_KEY);
-                formData.append("signature", signature);
-
-                fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/destroy`, {
-                    method: "POST",
-                    body: formData
-                })
-                .then(res => { if (!res.ok) throw new Error(); return res.json(); })
-                .then(data => {
-                    // Jika sukses terhapus atau filenya memang sudah tidak ada di Cloudinary
-                    if (data.result === "ok" || data.result === "not_found") {
-                        inventoryData[originalIndex].imageUrl = "";
-                        update(ref(db, `inventory_root/items/${originalIndex}`), { imageUrl: "" })
-                            .then(() => {
-                                container.innerHTML = `
-                                    <label class="upload-label" for="file_${originalIndex}">📷 Kamera</label>
-                                    <input type="file" id="file_${originalIndex}" class="file-input" data-index="${originalIndex}" accept="image/*" capture="environment" style="display:none;">
-                                `;
-                            });
-                    } else {
-                        throw new Error();
-                    }
-                })
-                .catch(() => {
-                    alert("Gagal menghapus gambar di Cloudinary! Periksa kembali apakah kanda sudah mencentang izin hapus Unsigned di dasbor.");
-                    renderTablePage();
-                });
+        function stopEndAlarm() {
+            if (alarmInterval) {
+                clearInterval(alarmInterval);
+                alarmInterval = null;
             }
-        });
-
-        function refreshActiveDataOnly() {
-            const rows = tableBody.querySelectorAll('tr');
-            rows.forEach(row => {
-                const origIdx = row.getAttribute('data-original-index');
-                if (origIdx !== null) {
-                    const cloudItem = inventoryData[origIdx];
-                    if (cloudItem) {
-                        const targetFiltered = filteredData.find(f => f.originalIndex == origIdx);
-                        if (targetFiltered) {
-                            targetFiltered.fisik = cloudItem.fisik;
-                            targetFiltered.remarks = cloudItem.remarks;
-                            targetFiltered.imageUrl = cloudItem.imageUrl;
-                        }
-                    }
-                }
-            });
+            document.getElementById('alarm-modal').classList.add('hidden');
+            activeSession = null;
         }
-
-        function updatePaginationControls() {
-            const maxPage = Math.ceil(filteredData.length / rowsPerPage) || 1;
-            const start = (currentPage - 1) * rowsPerPage;
-            const end = start + rowsPerPage;
-            const totalShow = Math.min(end, filteredData.length);
-            document.getElementById('pageInfo').innerText = `Menampilkan ${filteredData.length > 0 ? start + 1 : 0}-${totalShow} dari ${filteredData.length} item`;
-            document.getElementById('btnPrev').disabled = (currentPage === 1);
-            document.getElementById('btnNext').disabled = (currentPage === maxPage || filteredData.length === 0);
-        }
-
-        tableBody.addEventListener('input', function(e) {
-            const row = e.target.closest('tr'); const originalIndex = row.getAttribute('data-original-index');
-            if (e.target.classList.contains('input-fisik')) {
-                const value = e.target.value; const fisikValue = value !== "" ? parseFloat(value) : "";
-                inventoryData[originalIndex].fisik = fisikValue;
-                clearTimeout(firebaseTimeouts[originalIndex + '_fisik']);
-                firebaseTimeouts[originalIndex + '_fisik'] = setTimeout(() => { update(ref(db, `inventory_root/items/${originalIndex}`), { fisik: fisikValue }); }, 500); 
-            }
-            if (e.target.classList.contains('input-remarks')) {
-                const remarksValue = e.target.value; inventoryData[originalIndex].remarks = remarksValue;
-                clearTimeout(firebaseTimeouts[originalIndex + '_remarks']);
-                firebaseTimeouts[originalIndex + '_remarks'] = setTimeout(() => { update(ref(db, `inventory_root/items/${originalIndex}`), { remarks: remarksValue }); }, 500);
-            }
-        });
-
-        function applySearchAndRender() {
-            const filter = document.getElementById('searchInput').value.toLowerCase();
-            filteredData = inventoryData
-                .map((item, index) => ({ ...item, originalIndex: index }))
-                .filter(item => item.partNo.toLowerCase().includes(filter) || item.deskripsi.toLowerCase().includes(filter));
-            currentPage = 1; renderTablePage();
-        }
-
-        let searchTimeout;
-        document.getElementById('searchInput').addEventListener('input', () => { clearTimeout(searchTimeout); searchTimeout = setTimeout(applySearchAndRender, 150); });
-        document.getElementById('btnPrev').addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderTablePage(); window.scrollTo(0,0); } });
-        document.getElementById('btnNext').addEventListener('click', () => { const maxPage = Math.ceil(filteredData.length / rowsPerPage); if (currentPage < maxPage) { currentPage++; renderTablePage(); window.scrollTo(0,0); } });
-        
-        const modal = document.getElementById("addModal");
-        document.getElementById("btnOpenModal").addEventListener("click", () => { modal.style.display = "flex"; document.getElementById("formPartNo").focus(); });
-        document.getElementById("btnCloseModal").addEventListener("click", () => { modal.style.display = "none"; });
-        document.getElementById("btnSaveModal").addEventListener("click", () => {
-            const partNo = document.getElementById("formPartNo").value.trim();
-            const deskripsi = document.getElementById("formDeskripsi").value.trim();
-            if(!partNo || !deskripsi) return alert("Wajib diisi!");
-            inventoryData.push({ partNo, deskripsi, group:"-", type:"-", unit:"-", sistem:0, fisik:"", remarks:"", imageUrl:"" });
-            set(ref(db, 'inventory_root'), { items: inventoryData, lastUpdate: new Date().toLocaleString() }).then(() => { modal.style.display="none"; applySearchAndRender(); });
-        });
     </script>
 </body>
 </html>
